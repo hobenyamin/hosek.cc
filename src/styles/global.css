@@ -1,0 +1,115 @@
+@import 'tailwindcss';
+
+/* Your design tokens go here — colours, fonts, type scale, spacing.
+   https://tailwindcss.com/docs/theme */
+
+@theme {
+  --font-sans: var(--font-satoshi);
+  
+  --color-rail-bg:;
+  --color-rail-ink:;
+  --color-rail-dim:;
+
+  /*
+    The homepage rail's geometry and feel. These are read back at runtime by
+    WorkRail.astro via getComputedStyle, so they are not styling that happens
+    to live in CSS — they are the numbers the scroll engine runs on, and the
+    unitless ones must stay unitless.
+
+    Covers swell continuously towards the middle and peak only dead centre.
+    Two numbers shape that curve:
+
+      spread  how quickly size falls away. Higher = only the middle cover is
+              big; lower = the swell is broad and gentle.
+      curve   how flat the peak is. ~1 is a soft mound with no clear winner,
+              ~3 holds tiles near full size then drops off sharply.
+
+    thumb-min is the floor the far ones flatten out at, gap is the space
+    between any two, and step is how far you scroll per project (in vh).
+  */
+  --rail-rw: 4;
+  --rail-rh: 3;
+  --rail-w: min(88vw, 58vh);
+
+  --rail-spread: 1.75;
+  --rail-curve: 2.2;
+  --rail-thumb-min: 0.1;
+  --rail-gap: 0.03;
+  --rail-clear: 0;
+
+  --rail-step: 0.34;
+  --rail-glide: 700;
+
+  --rail-fade: 0.12;
+  --rail-fade-min: 0.4;
+}
+
+/* Grain overlay effect.
+   The overlay is an ABSOLUTE, full-document layer that scrolls with the page —
+   NOT position:fixed. A fixed + will-change + mix-blend layer gets promoted to
+   its own compositor layer that mobile browsers refuse to re-rasterize during
+   scroll, so lower sections render blank until scrolling stops. Painting it as
+   part of the normal page flow makes it cover the whole document reliably. */
+body {
+  position: relative;
+  overflow-x: clip;
+  /* Short pages (e.g. /about) otherwise leave body shorter than the viewport,
+     so the grain overlay below — sized to body's content height — ends before
+     the visible bottom of the screen, right where the fixed footer sits. */
+  min-height: 100dvh;
+}
+
+.g_overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.g_grain_overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.45;
+  pointer-events: none;
+  background-image: url('/images/background_effect.png');
+  background-size: auto;
+  background-repeat: repeat;
+  mix-blend-mode: color-dodge;
+}
+
+.u-grain-animate {
+  /* step-end = hard cut to a new scattered position every frame (~16fps),
+     like real film grain — never a smooth diagonal slide. */
+  animation: grain-animation 0.6s step-end infinite;
+}
+
+/* Animating a full-document mix-blend layer repaints the whole viewport every
+   frame — cheap enough on desktop, wasteful on phones. Keep the static grain
+   texture (which now renders everywhere) and drop only the flicker on small
+   screens and for reduced-motion users. */
+@media (max-width: 640px) {
+  .u-grain-animate {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-grain-animate {
+    animation: none;
+  }
+}
+
+/* Steady opacity (no per-frame flicker) and every frame is offset — no aligned
+   "0 0" landmark that pops once per loop. Just position scatter. */
+@keyframes grain-animation {
+  0%   { background-position: -37px 21px; }
+  10%  { background-position: 22px -33px; }
+  20%  { background-position: -19px 28px; }
+  30%  { background-position: 34px -18px; }
+  40%  { background-position: -28px -24px; }
+  50%  { background-position: 41px 15px; }
+  60%  { background-position: -13px 33px; }
+  70%  { background-position: 27px -29px; }
+  80%  { background-position: -34px 11px; }
+  90%  { background-position: 16px 24px; }
+}

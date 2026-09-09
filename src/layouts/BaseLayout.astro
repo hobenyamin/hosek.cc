@@ -1,0 +1,37 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Frame from '../components/Frame.astro';
+import { SITE } from '../consts';
+import { Font } from "astro:assets";
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+}
+
+const { title, description, image, type } = Astro.props;
+
+// Page titles read "Thing — Name"; the homepage passes no title.
+const pageTitle = title ? `${title} — ${SITE.name}` : SITE.title;
+---
+
+<!doctype html>
+<html lang={SITE.locale}>
+  <head>
+    <BaseHead title={pageTitle} description={description} image={image} type={type} />
+    <Font cssVariable='--font-satoshi'/>
+  </head>
+  <body class="antialiased bg-[#fafafafa]">
+    <Frame />
+
+    <slot />
+
+    {/* Global grain overlay — sits above ALL content, never interactive.
+        Rendered once here so no transformed ancestor can clip it. */}
+    <div class="g_overlay" aria-hidden="true">
+      <div class="g_grain_overlay u-grain-animate"></div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,120 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { ArrowDownRight, X } from '@lucide/astro';
+---
+
+<BaseLayout>
+    <section id="about" class="h-dvh px-6 py-30 space-y-20">
+        <div class="grid grid-cols-3 gap-10">
+            <div class="@container flex items-end gap-10">
+                <div class="flex items-center">
+                    <X size={18} stroke-width={3}/>
+                    <span class="text-9xl leading-none">About</span>
+                </div>
+                <ArrowDownRight size={48} class=""/>
+            </div>
+            <div class="flex items-end">
+                <span class="text-xs uppercase font-semibold">&copy EST. 2026</span>
+            </div>
+            <div class="flex flex-col justify-end">
+                <span class="text-xs uppercase font-semibold">Digital</span>
+                <span class="text-xs uppercase font-semibold">Web Development</span>
+                <span class="text-xs uppercase font-semibold">UI/UX Design</span>
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-10">
+            <div class="flex">
+                micrographics
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <div>
+                    <span class="text-black/60 text-xs uppercase font-semibold">Biography</span>
+                </div>
+                <div class="flex flex-col gap-3 max-w-md">
+                    <span class="text-xs uppercase font-semibold">I'm a 22-year-old designer and developer from Czechia. I design interfaces and then build them with indent.</span>
+                    <span class="text-xs uppercase font-semibold">I studied IT but taught myself the parts I cared about. I started full-stack and moved toward the frontend, drawn to precision, intent, accessibility, performance, and making things that don't look like everything else. I care about how people move through a page and place things accordingly.</span>
+                    <span class="text-xs uppercase font-semibold">Away from the screen I'm a classically trained pianist, which is probably where the sense of precision comes from. Otherwise out bouldering, hiking, over a chessboard, or somewhere new looking for good food.</span>
+                    <span class="text-xs uppercase font-semibold">I'm currently open to junior frontend roles and available for freelance work</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col justify-between">
+                <div class="flex flex-col gap-15">
+                    <div class="flex flex-col gap-2">
+                        <div>
+                            <span class="text-black/60 text-xs uppercase font-semibold">Services</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs uppercase font-semibold">Frontend Development</span>
+                            <span class="text-xs uppercase font-semibold">UI/UX Design</span>
+                            <span class="text-xs uppercase font-semibold">Freelance Web Projects</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <div>
+                            <span class="text-black/60 text-xs uppercase font-semibold">Contact</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <a href="" class="text-xs uppercase font-semibold">hosek@weborio.cz</a>
+                            <a href="" class="text-xs uppercase font-semibold">(+420) 605 485 485</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex place-self-end h-50 w-50 bg-black">
+
+                </div>
+            </div>
+        </div>
+
+        <!-- <div class="h-full grid grid-cols-3 gap-10">
+
+            <div class="@container flex">
+                <span class="text-[30cqw] font-black leading-none">About</span>
+            </div>
+
+            <div class="flex pt-40">
+                <div class="flex flex-col gap-2">
+                    <div>
+                        <span class="text-black/60 text-xs uppercase font-semibold">Biography</span>
+                    </div>
+                    <div class="flex flex-col gap-3 max-w-md">
+                        <span class="text-xs uppercase font-semibold">I'm a 22-year-old designer and developer from Czechia. I design interfaces and then build them with indent.</span>
+                        <span class="text-xs uppercase font-semibold">I studied IT but taught myself the parts I cared about. I started full-stack and moved toward the frontend, drawn to precision, intent, accessibility, performance, and making things that don't look like everything else. I care about how people move through a page and place things accordingly.</span>
+                        <span class="text-xs uppercase font-semibold">Away from the screen I'm a classically trained pianist, which is probably where the sense of precision comes from. Otherwise out bouldering, hiking, over a chessboard, or somewhere new looking for good food.</span>
+                        <span class="text-xs uppercase font-semibold">I'm currently open to junior frontend roles and available for freelance work</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col justify-between pt-40">
+                <div class="flex flex-col gap-15">
+                    <div class="flex flex-col gap-2">
+                        <div>
+                            <span class="text-black/60 text-xs uppercase font-semibold">Services</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs uppercase font-semibold">Frontend Development</span>
+                            <span class="text-xs uppercase font-semibold">UI/UX Design</span>
+                            <span class="text-xs uppercase font-semibold">Freelance Web Projects</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <div>
+                            <span class="text-black/60 text-xs uppercase font-semibold">Contact</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <a href="" class="text-xs uppercase font-semibold">hosek@weborio.cz</a>
+                            <a href="" class="text-xs uppercase font-semibold">(+420) 605 485 485</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex place-self-end h-50 w-50 bg-black">
+
+                </div>
+            </div>
+        </div> -->
+    </section>
+</BaseLayout>

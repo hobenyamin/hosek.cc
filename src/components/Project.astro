@@ -1,0 +1,71 @@
+---
+import { ArrowRight } from '@lucide/astro';
+
+/**
+ * One project row, matching the reference layout: index number, display name
+ * with a superscript mark, a right-aligned category tag, the image, then the
+ * description and a "learn more" rule.
+ *
+ * The component owns everything INSIDE the row — type, spacing, aspect ratio.
+ * It never sets its own width or grid position: the page decides that per
+ * layout variant via `class`, which is the only thing that differs between
+ * the four layout options below. Swapping layouts must never mean re-styling
+ * the projects themselves.
+ */
+interface Props {
+  /** Position in the series, rendered as "00-N/". */
+  index: number;
+  name: string;
+  /** Superscript after the name — the reference uses a trademark mark. */
+  mark?: string;
+  /** Right-aligned tag on the title line. */
+  category: string;
+  description: string;
+  href?: string;
+  /** Extra classes for width/offset — supplied by the layout variant. */
+  class?: string;
+}
+
+const {
+  index,
+  name,
+  mark = '™',
+  category,
+  description,
+  href = '/',
+  class: className = '',
+} = Astro.props;
+
+const number = `00-${index}/`;
+---
+
+<article class={`flex flex-col gap-4 ${className}`}>
+  <div class="flex flex-col gap-1">
+    <span class="text-xs uppercase font-semibold">{number}</span>
+
+    {/* Name and category share a baseline so the tag reads as an annotation
+        of the title rather than a second heading. */}
+    <div class="flex items-baseline justify-between gap-6">
+      <h2 class="text-5xl leading-none tracking-tight">
+        {name}<sup class="text-base align-super">{mark}</sup>
+      </h2>
+      <span class="text-xs uppercase font-semibold shrink-0">{category}</span>
+    </div>
+  </div>
+
+  <a href={href} class="pointer-events-auto block bg-black aspect-4/3"></a>
+
+  <div class="flex flex-col gap-3 max-w-md">
+    <span class="text-xs uppercase font-semibold">{description}</span>
+
+    {/* The rule under the link is part of the reference's signature — it
+        closes the block and gives the eye a stopping line before the next. */}
+    <a
+      href={href}
+      class="pointer-events-auto flex items-center gap-2 border-b border-black pb-1 w-fit text-xs uppercase font-semibold"
+    >
+      <span>Learn more</span>
+      <ArrowRight size={12} />
+    </a>
+  </div>
+</article>

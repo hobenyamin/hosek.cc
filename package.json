@@ -1,18 +1,27 @@
 {
-  "name": "",
+  "name": "hosek-cc",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "private": true,
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro check && astro build",
     "preview": "astro preview",
+    "check": "astro check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^7.2.10"
+    "@astrojs/sitemap": "^3.7.4",
+    "@lucide/astro": "^1.42.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.2.10",
+    "lenis": "^1.3.26",
+    "tailwindcss": "^4.3.3"
   },
   "allowScripts": {
     "esbuild": true

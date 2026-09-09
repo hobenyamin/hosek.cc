@@ -1,0 +1,61 @@
+---
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+
+const NAV = [
+  { label: 'Index', href: '/' },
+  { label: 'Work', href: '/work' },
+  { label: 'About', href: '/about' },
+];
+---
+
+{/* Header and footer share one 3-column grid so all four corners land on the
+    same two vertical lines as the page content below. */}
+<div class="frame pointer-events-none">
+  <header class="fixed inset-x-0 top-0 z-50 grid grid-cols-3 gap-10 px-6 py-4">
+    <nav aria-label="Main">
+      <ul class="flex gap-4">
+        {
+          NAV.map(({ label, href }) => (
+            <li>
+              <a
+                class="pointer-events-auto block text-xs font-semibold uppercase"
+                href={href}
+                aria-current={isCurrent(href) ? 'page' : undefined}
+              >
+                {label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    {/* Metadata, not navigation — dimmed so the nav is the only full-black thing up here. */}
+    <div class="flex flex-col">
+      <span class="text-xs font-semibold uppercase">Designer &amp; Developer</span>
+      <span class="text-xs font-semibold uppercase">Based in Czechia</span>
+    </div>
+
+    <div class="flex justify-end">
+      <a class="pointer-events-auto block text-xs font-semibold uppercase" href="mailto:hosek@weborio.cz">
+        hosek@weborio.cz
+      </a>
+    </div>
+  </header>
+
+  <footer class="fixed inset-x-0 bottom-0 z-50 grid grid-cols-3 items-end gap-10 px-6 py-4">
+    <a class="pointer-events-auto block text-xs font-semibold uppercase" href="/">Nikolas Hošek</a>
+
+    {/* The middle slot the grid frees up — the most commercially important line
+        on the site, kept out of the About page's body copy. */}
+    <p class="flex items-center gap-2 text-xs font-semibold uppercase">
+      <span class="inline-block size-1.5 shrink-0 rounded-full bg-black"></span>
+      Available for work
+    </p>
+
+    <div class="flex justify-end">
+      <time class="text-xs font-semibold tabular-nums uppercase" datetime="21:09">21:09:43</time>
+    </div>
+  </footer>
+</div>
