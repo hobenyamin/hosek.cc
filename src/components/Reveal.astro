@@ -1,0 +1,132 @@
+---
+/**
+ * A line of text that can be animated from behind a hard edge.
+ *
+ * The element is a clipping box and the text inside is a separate
+ * transformable layer. Two things use that structure:
+ *
+ *   ENTRY — RevealIntro slides `.reveal__inner` in from off-mask on load.
+ *   SWAP  — with `swap`, a second copy of the label is stacked directly below
+ *           the first, and hover slides the pair up by exactly one line, so
+ *           the original leaves as the duplicate arrives.
+ *
+ * The swap is pure CSS on a wrapper INSIDE `.reveal__inner`, deliberately:
+ * the entry animation writes an inline transform on `.reveal__inner` itself,
+ * and an inline style beats a stylesheet. Putting the hover on the same
+ * element would mean whichever ran last silently won. Two nested layers means
+ * the two never touch each other.
+ *
+ * Nothing is hidden by CSS. The intro sets its offscreen state one frame
+ * before animating, so a page whose JS never runs is a normal page with all
+ * its text in place — and the swap still works, because it needs no JS.
+ */
+interface Props {
+  /** Element to render as the mask. Inline contexts want `span`. */
+  as?: 'div' | 'span' | 'li';
+  /** Order within the entry cascade. Lower goes first; ties use DOM order. */
+  order?: number;
+  /**
+   * Slide to a second copy of the label on hover. The duplicate is aria-hidden,
+   * so the line is still announced once.
+   */
+  swap?: boolean;
+  class?: string;
+}
+
+const { as: Tag = 'span', order, swap = false, class: className = '' } = Astro.props;
+---
+
+<Tag class={`reveal ${className}`} data-reveal data-reveal-order={order}>
+  <span class="reveal__inner" data-reveal-inner>
+    {
+      swap ? (
+        <span class="reveal__swap">
+          <span class="reveal__face"><slot /></span>
+          <span class="reveal__face" aria-hidden="true"><slot /></span>
+        </span>
+      ) : (
+        <slot />
+      )
+    }
+  </span>
+</Tag>
+
+<style>
+  /* The mask clips only along the axis the text travels; leaving the block
+     axis visible means descenders and the status dot are never shaved. */
+  .reveal {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+  }
+
+  .reveal__inner {
+    display: inline-block;
+    /* Promoted up front so the first animated frame does not pay for a layer
+       being created mid-flight — that is what makes a slide stutter on entry. */
+    will-change: transform;
+  }
+
+  /* --------------------------------------------------------------- swap */
+
+  /*
+    The mask must be exactly ONE line tall. Without this it is inline-block
+    with overflow:hidden, so it sizes to fit both stacked faces, ends up two
+    lines tall and clips nothing — both copies just sit there visible.
+
+    1em of the element's own line-height is the height of one face, so the
+    box stays correct at any font-size.
+  */
+  .reveal:has(.reveal__swap) {
+    height: 1lh;
+  }
+
+  .reveal__swap {
+    display: block;
+    transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal__face {
+    display: block;
+    /* Both faces must be exactly one line tall or the travel distance below
+       stops matching the gap between them. */
+    line-height: inherit;
+    white-space: nowrap;
+  }
+
+  /*
+    Travel is -50% of the two-face stack, i.e. exactly one line, so the second
+    face lands precisely where the first was. A fixed em value would drift the
+    moment a label's font-size or line-height changed.
+
+    `:has()` lets the whole interactive element drive it — hovering anywhere on
+    the link or button moves the text, not just the glyphs themselves.
+  */
+  /* :global on the ancestor — the link or button lives in whichever
+     component used <Reveal>, so it never carries this file's scope id and a
+     scoped selector would simply never match. */
+  :global(:is(a, button, [data-swap-host]):hover) .reveal__swap,
+  :global(:is(a, button, [data-swap-host]):focus-visible) .reveal__swap {
+    transform: translateY(-50%);
+  }
+
+  /*
+    The same travel, driven by a class instead of a pointer, so a swap can be
+    played once as an entry animation. /work uses it to land each project's
+    text as its image finishes wiping in.
+
+    It starts HELD at -50% — the second face showing — and releases to 0, so
+    the line arrives by sliding its real text down into place. That is the
+    reverse of the hover direction on purpose: hover reveals the duplicate,
+    entry reveals the original.
+  */
+  :global(.is-swapped) .reveal__swap {
+    transform: translateY(-50%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal__swap {
+      transition: none;
+    }
+  }
+</style>

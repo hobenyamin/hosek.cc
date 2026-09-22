@@ -5,8 +5,10 @@
 
 export const SITE = {
   name: 'Nikolas Hošek',
-  title: '',
-  description: '',
+  /** Homepage <title>; other pages render 'Thing — Name'. */
+  title: 'Nikolas Hošek — Designer & Frontend Developer',
+  description:
+    'Designer and frontend developer in Prague. I design interfaces and then build them — portfolio, selected work and contact.',
   /** Must match `site` in astro.config.mjs. */
   url: 'https://hosek.cc',
   locale: 'en',
@@ -16,9 +18,18 @@ export const SITE = {
 
 export const CONTACT = {
   email: 'hosek@weborio.cz',
+  /** Human-readable; `telHref` is the dialable form. */
+  phone: '(+420) 605 485 485',
+  telHref: 'tel:+420605485485',
+  location: 'Prague, Czechia',
+  /** Shown verbatim on /about — keep it dated, not vague. */
+  availability: 'Available for freelance from March 2026',
 };
 
-export const SOCIALS: { label: string; href: string }[] = [];
+export const SOCIALS: { label: string; href: string }[] = [
+  { label: 'GitHub', href: 'https://github.com/' },
+  { label: 'LinkedIn', href: 'https://linkedin.com/in/' },
+];
 
 export const NAV: { label: string; href: string }[] = [
   { label: 'Index', href: '/' },

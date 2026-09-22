@@ -1,0 +1,89 @@
+---
+/**
+ * Entry animation: every <Reveal> line slides in from the left, in the order
+ * they sit across the page, with a slight overshoot as it lands.
+ *
+ * The cascade is keyed off each line's SCREEN POSITION, not its position in
+ * the DOM — a fixed header, a footer and the page body are three separate
+ * subtrees, so document order would fire them in a sequence that has nothing
+ * to do with what the eye sees. Sorting by x (then y) makes the sweep read as
+ * one movement travelling across the page.
+ */
+---
+
+<script>
+  import { animate, stagger } from 'motion';
+  import type { AnimationOptions } from 'motion';
+
+  // Anything inside a block that runs its own entry is excluded: /work's
+  // projects reveal as they scroll into view and /about's sections rise on
+  // load, so sweeping their lines here too would animate the same text twice,
+  // from two different scripts. Those lines still carry <Reveal swap> for its
+  // hover behaviour, which needs no JS and is unaffected.
+  const lines = Array.from(
+    document.querySelectorAll<HTMLElement>('[data-reveal]'),
+  ).filter((line) => !line.closest('[data-project], [data-about]'));
+
+  // Unconditional, and BEFORE the early returns inside run(): the frame's
+  // non-text entries (the status dot) hold themselves at scale(0) in CSS, so
+  // a path that never sets this would leave them invisible for good.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.documentElement.classList.add('is-frame-in');
+    });
+  });
+
+  if (lines.length > 0) run(lines);
+
+  function run(lines: HTMLElement[]) {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (reduced.matches) return;
+
+    const inners = lines
+      .map((line) => ({
+        el: line.querySelector<HTMLElement>('[data-reveal-inner]'),
+        box: line.getBoundingClientRect(),
+        order: Number(line.dataset.revealOrder ?? Number.NaN),
+      }))
+      .filter((entry): entry is { el: HTMLElement; box: DOMRect; order: number } =>
+        entry.el !== null,
+      )
+      // An explicit order wins; everything else sweeps left to right, and
+      // lines sharing a column fall top to bottom.
+      .sort((a, b) => {
+        if (!Number.isNaN(a.order) || !Number.isNaN(b.order)) {
+          return (Number.isNaN(a.order) ? Infinity : a.order) -
+            (Number.isNaN(b.order) ? Infinity : b.order);
+        }
+        return a.box.left - b.box.left || a.box.top - b.box.top;
+      })
+      .map((entry) => entry.el);
+
+    // Offscreen state is set here rather than in CSS, so text is never hidden
+    // on a page whose module fails to load.
+    for (const el of inners) el.style.transform = 'translateX(-110%)';
+
+    // Two frames: one for the browser to paint the offscreen state, one to be
+    // sure it has. Animating from an unpainted state is the usual reason an
+    // entry animation silently does not run.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        animate(
+          inners,
+          { transform: ['translateX(-110%)', 'translateX(0%)'] },
+          {
+            duration: 0.9,
+            delay: stagger(0.055),
+            // Overshoots a little past its resting place and settles back —
+            // the swing. Softer than a spring, and it costs one curve rather
+            // than a physics simulation per element.
+            ease: [0.16, 1.11, 0.3, 1],
+          } satisfies AnimationOptions,
+        ).then(() => {
+          // The promotion hint is only worth paying for while something moves.
+          for (const el of inners) el.style.willChange = '';
+        });
+      });
+    });
+  }
+</script>

@@ -1,4 +1,6 @@
 ---
+import Reveal from './Reveal.astro';
+
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
 
@@ -12,18 +14,32 @@ const NAV = [
 {/* Header and footer share one 3-column grid so all four corners land on the
     same two vertical lines as the page content below. */}
 <div class="frame pointer-events-none">
-  <header class="fixed inset-x-0 top-0 z-50 grid grid-cols-3 gap-10 px-6 py-4">
+  <header class="fixed inset-x-0 top-0 z-50 grid grid-cols-2 gap-6 px-4 py-4 md:grid-cols-3 md:gap-10 md:px-6">
     <nav aria-label="Main">
-      <ul class="flex gap-4">
+      {/* Below md the links collapse to a single button; the menu it opens is
+          still to be designed, so it only reports its state for now. */}
+      <button
+        type="button"
+        class="pointer-events-auto block text-sm font-semibold transition-colors hover:text-ink md:hidden"
+        aria-expanded="false"
+        aria-controls="menu"
+        data-menu-toggle
+      >
+        <Reveal swap>Menu</Reveal>
+      </button>
+
+      <ul class="hidden gap-4 md:flex">
         {
           NAV.map(({ label, href }) => (
             <li>
+              {/* Reveal sits INSIDE the anchor: the link keeps its own hover,
+                  focus ring and hit area, and only the text slides. */}
               <a
-                class="pointer-events-auto block text-xs font-semibold uppercase"
+                class="pointer-events-auto block text-sm font-semibold text-ink-50 transition-colors hover:text-ink aria-[current=page]:text-ink"
                 href={href}
                 aria-current={isCurrent(href) ? 'page' : undefined}
               >
-                {label}
+                <Reveal swap>{label}</Reveal>
               </a>
             </li>
           ))
@@ -32,30 +48,109 @@ const NAV = [
     </nav>
 
     {/* Metadata, not navigation — dimmed so the nav is the only full-black thing up here. */}
-    <div class="flex flex-col">
-      <span class="text-xs font-semibold uppercase">Designer &amp; Developer</span>
-      <span class="text-xs font-semibold uppercase">Based in Czechia</span>
+    <div class="hidden flex-col md:flex">
+      <Reveal class="text-sm font-semibold">Designer &amp; Developer</Reveal>
+      <Reveal class="text-ink-50 text-sm font-semibold">Based in Czechia</Reveal>
     </div>
 
     <div class="flex justify-end">
-      <a class="pointer-events-auto block text-xs font-semibold uppercase" href="mailto:hosek@weborio.cz">
-        hosek@weborio.cz
+      <a class="pointer-events-auto block text-sm font-semibold text-ink-50 transition-colors hover:text-ink" href="mailto:hosek@weborio.cz">
+        <Reveal swap>hosek@weborio.cz</Reveal>
       </a>
     </div>
   </header>
 
-  <footer class="fixed inset-x-0 bottom-0 z-50 grid grid-cols-3 items-end gap-10 px-6 py-4">
-    <a class="pointer-events-auto block text-xs font-semibold uppercase" href="/">Nikolas Hošek</a>
+  <footer class="fixed inset-x-0 bottom-0 z-50 grid grid-cols-2 items-end gap-6 px-4 py-4 md:grid-cols-3 md:gap-10 md:px-6">
+    <a class="pointer-events-auto hidden text-sm font-semibold md:block" href="/"><Reveal swap>Nikolas Hošek</Reveal></a>
 
     {/* The middle slot the grid frees up — the most commercially important line
         on the site, kept out of the About page's body copy. */}
-    <p class="flex items-center gap-2 text-xs font-semibold uppercase">
-      <span class="inline-block size-1.5 shrink-0 rounded-full bg-black"></span>
-      Available for work
+    <p class="flex items-center gap-2 text-sm font-semibold">
+      {/* The pulse is the resting state; `frame__dot` adds the entry, which
+          scales it up from nothing as the line beside it arrives. A point has
+          no direction to slide from, so it grows instead. */}
+      <span class="frame__dot inline-block size-1.5 shrink-0 rounded-full bg-signal animate-pulse"></span>
+      <Reveal>Available <span class="hidden sm:inline">for work</span></Reveal>
     </p>
 
     <div class="flex justify-end">
-      <time class="text-xs font-semibold tabular-nums uppercase" datetime="21:09">21:09:43</time>
+      <time class="text-sm font-semibold tabular-nums" data-clock>
+        <Reveal><span data-clock-hm>--:--</span><span class="hidden sm:inline" data-clock-s>:--</span></Reveal>
+      </time>
     </div>
   </footer>
 </div>
+
+<style>
+  /*
+    Entry for the status dot.
+
+    TRANSFORM ONLY. `animate-pulse` is a keyframe animation on `opacity`, and
+    a keyframe animation beats a transition on the same property — fading the
+    dot in would be silently overridden the moment the pulse ran, and the dot
+    would simply appear. Scaling leaves opacity entirely to the pulse, so the
+    two compose instead of competing.
+
+    `html.js` is set in BaseLayout before first paint, so the held state is
+    never visible as a flash at full size — and a page whose scripts fail
+    shows the dot normally.
+  */
+  :global(html.js) .frame__dot {
+    transform: scale(0);
+  }
+
+  :global(html.js.is-frame-in) .frame__dot {
+    transform: scale(1);
+    /* Overshoots and settles, the same swing the frame's own lines land with.
+       The delay puts it with "Available for work" rather than ahead of it. */
+    transition: transform 620ms cubic-bezier(0.16, 1.4, 0.3, 1) 520ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(html.js) .frame__dot {
+      transform: none;
+      transition: none;
+    }
+  }
+</style>
+
+{/* Smooth scrolling, site-wide. WorkRail drives its programmatic moves
+    through `window.lenis` so the rail and the user's own wheel never fight
+    over the same scroll position. */}
+<script>
+  import Lenis from 'lenis';
+
+  // Czech local time, so the footer reads as live rather than frozen. Hours and
+  // seconds are separate elements because narrow screens hide the seconds via
+  // CSS — writing one string here would put them back.
+  {
+    const el = document.querySelector<HTMLElement>("[data-clock]");
+    const hm = el?.querySelector<HTMLElement>("[data-clock-hm]");
+    const sec = el?.querySelector<HTMLElement>("[data-clock-s]");
+
+    if (el && hm && sec) {
+      const fmt = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Prague",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+      const tick = () => {
+        const [h, m, s] = fmt.format(new Date()).split(":");
+        hm.textContent = `${h}:${m}`;
+        sec.textContent = `:${s}`;
+        el.setAttribute("datetime", `${h}:${m}:${s}`);
+      };
+      tick();
+      setInterval(tick, 1000);
+    }
+  }
+
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  if (!reduced.matches) {
+    const lenis = new Lenis({ autoRaf: true });
+    window.lenis = lenis;
+  }
+</script>

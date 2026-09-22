@@ -1,71 +1,278 @@
 ---
 import { ArrowRight } from '@lucide/astro';
+import { X } from '@lucide/astro';
+import Reveal from './Reveal.astro';
 
 /**
- * One project row, matching the reference layout: index number, display name
- * with a superscript mark, a right-aligned category tag, the image, then the
- * description and a "learn more" rule.
+ * One project block on /work.
  *
- * The component owns everything INSIDE the row — type, spacing, aspect ratio.
- * It never sets its own width or grid position: the page decides that per
- * layout variant via `class`, which is the only thing that differs between
- * the four layout options below. Swapping layouts must never mean re-styling
- * the projects themselves.
+ * The four blocks were copy-pasted markup, which meant every responsive tweak
+ * had to be made four times and the copies had already drifted apart. This is
+ * that same block, authored once — the page now only says which project goes
+ * where.
+ *
+ * Widths and grid placement stay the page's business; this component never
+ * sets its own column.
  */
 interface Props {
-  /** Position in the series, rendered as "00-N/". */
+  /** Position in the series, rendered as `00-N/`. */
   index: number;
   name: string;
-  /** Superscript after the name — the reference uses a trademark mark. */
-  mark?: string;
-  /** Right-aligned tag on the title line. */
-  category: string;
-  description: string;
+  /** Discipline line, right-aligned against the title. */
+  category?: string;
+  /** Live site. Omitted while a project has nothing public to point at. */
+  liveUrl?: string;
+  /** Case study. */
   href?: string;
-  /** Extra classes for width/offset — supplied by the layout variant. */
   class?: string;
 }
 
 const {
   index,
   name,
-  mark = '™',
-  category,
-  description,
+  category = 'Design & Development',
+  liveUrl,
   href = '/',
   class: className = '',
 } = Astro.props;
-
-const number = `00-${index}/`;
 ---
 
-<article class={`flex flex-col gap-4 ${className}`}>
-  <div class="flex flex-col gap-1">
-    <span class="text-xs uppercase font-semibold">{number}</span>
-
-    {/* Name and category share a baseline so the tag reads as an annotation
-        of the title rather than a second heading. */}
-    <div class="flex items-baseline justify-between gap-6">
-      <h2 class="text-5xl leading-none tracking-tight">
-        {name}<sup class="text-base align-super">{mark}</sup>
-      </h2>
-      <span class="text-xs uppercase font-semibold shrink-0">{category}</span>
+{/* `data-project` is the entry unit: the script below wipes the image in and
+    lands the text as it finishes, so both are keyed off this one element
+    crossing the viewport. */}
+<div class={`flex flex-col gap-3 ${className}`} data-project>
+  <div class="flex flex-col">
+    <div>
+      <span class="text-[10px] uppercase font-black text-signal">
+        <Reveal swap>00-{index}/</Reveal>
+      </span>
+    </div>
+    {/* Title and discipline stack on a phone — side by side they force the
+        name to wrap at almost every project length. */}
+    <div class="flex flex-col xl:flex-row xl:items-end xl:justify-between">
+      <div class="flex items-center gap-2 -ml-0.5">
+        <X size={15} stroke-width={3} class="project__mark shrink-0"/>
+        <span class="text-3xl font-medium md:text-2xl lg:text-3xl">
+          <Reveal swap>{name}&reg;</Reveal>
+        </span>
+      </div>
+      <div>
+        <span class="text-ink-50 text-[10px] font-semibold uppercase font-mono tracking-widest lg:text-xs">
+          <Reveal swap>{category}</Reveal>
+        </span>
+      </div>
     </div>
   </div>
 
-  <a href={href} class="pointer-events-auto block bg-black aspect-4/3"></a>
+  <a href={href} class="project__media block bg-ink aspect-4/3"></a>
 
-  <div class="flex flex-col gap-3 max-w-md">
-    <span class="text-xs uppercase font-semibold">{description}</span>
+  <div class="flex items-center justify-between gap-4">
+    {liveUrl ? (
+      <a class="flex items-center gap-1 w-fit" href={liveUrl} target="_blank" rel="noreferrer">
+        <span class="text-sm md:text-[12px] lg:text-sm font-medium text-ink-50 underline hover:text-ink"><Reveal swap>Live website</Reveal></span>
+      </a>
+    ) : (
+      <span></span>
+    )}
 
-    {/* The rule under the link is part of the reference's signature — it
-        closes the block and gives the eye a stopping line before the next. */}
-    <a
-      href={href}
-      class="pointer-events-auto flex items-center gap-2 border-b border-black pb-1 w-fit text-xs uppercase font-semibold"
-    >
-      <span>Learn more</span>
-      <ArrowRight size={12} />
+    <a class="flex items-center gap-1 w-fit shrink-0" href={href}>
+      <span class="text-ink-50 text-[10px] font-semibold uppercase font-mono tracking-widest transition-all hover:text-ink md:text-xs">
+        {/* Brackets stay put and only the label swaps, matching /about's
+            contact links — the `[ ]` is a frame the text moves inside.
+
+            `data-no-entry` keeps it out of the block's entry animation: this
+            line is present from the start and only ever moves on hover. */}
+        <span class="text-ink">[</span> <span data-no-entry><Reveal swap>Learn more</Reveal></span> <span class="text-ink">]</span>
+      </span>
+      <ArrowRight size={12} stroke-width={3} class="project__go"/>
     </a>
   </div>
-</article>
+</div>
+
+<style>
+  /*
+    Entry: the image wipes in from the left, and each text line lands as it
+    finishes — the same left-to-right gesture the frame sweeps with, so the
+    page reads as one continuation of the load rather than a second idea.
+
+    The image is revealed with `clip-path`, not a transform: the block stays
+    exactly where it is laid out and the edge travels across it. A translate
+    would slide the whole box and collide with the grid.
+
+    Text uses <Reveal swap>'s two-face stack, held on the duplicate and
+    released to the real line, so the words arrive by swapping rather than by
+    sliding in from nowhere. Both are driven by `.is-in`, added once when the
+    block enters the viewport.
+  */
+  /* Guarded by `html.js` for the same reason as the text: a page whose module
+     never loads must show its images, not hide them behind a wipe that will
+     never be released. */
+  :global(html.js) .project__media {
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  :global(html.js) [data-project].is-in .project__media {
+    clip-path: inset(0 0 0 0);
+  }
+
+  /*
+    The text is held swapped until the wipe is most of the way across, so the
+    lines land WITH the image rather than racing it. Each line trails the one
+    above by a touch — the frame's own stagger, kept small so the block still
+    reads as a single arrival.
+  */
+  /*
+    Global because `.reveal__swap` carries Reveal's scope id, not this file's.
+
+    Scoped to the HELD state so it only times the entry. Applied
+    unconditionally it would also slow every hover for the rest of the
+    session — the same element drives both, and hover wants Reveal's own
+    snappier 420ms.
+  */
+  /*
+    Entry moves `.reveal__inner`, NOT `.reveal__swap`.
+
+    The swap layer holds two copies of the same words, so animating it on load
+    showed the line already sitting there and then cycling to an identical
+    line — it read as text changing, not text arriving. `.reveal__inner` is
+    the layer above it, which Reveal reserves for exactly this: sliding the
+    whole line out from behind the mask, so the words appear from nothing.
+
+    That also leaves `.reveal__swap` free for its real job — the hover swap on
+    the title and "Live website" — with the two never touching each other.
+  */
+  /*
+    The X leads the title it sits against, so it turns in just ahead of it.
+
+    A rotate rather than a slide: the mark is two crossed strokes, so spinning
+    it a quarter turn into place reads as the mark drawing itself, and it does
+    not need a mask to hide behind — there is nothing to clip it against.
+    Scale rides along so it arrives rather than merely pivots.
+
+    Global because lucide renders the <svg> from its own component, which never
+    carries this file's scope id.
+  */
+  :global(html.js .project__mark) {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.4);
+  }
+
+  :global(html.js [data-project].is-in .project__mark) {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+    /* 300ms — a beat ahead of the first text line at 380ms. */
+    transition:
+      opacity 400ms ease-out 300ms,
+      transform 700ms cubic-bezier(0.16, 1.11, 0.3, 1) 300ms;
+  }
+
+  /*
+    The "Learn more" arrow closes the block, so it comes in last and nudges
+    along its own axis — the direction it points, the same idea as the
+    masthead's down-right arrow.
+  */
+  :global(html.js .project__go) {
+    opacity: 0;
+    transform: translateX(-0.5em);
+  }
+
+  :global(html.js [data-project].is-in .project__go) {
+    opacity: 1;
+    transform: translateX(0);
+    transition:
+      opacity 400ms ease-out 720ms,
+      transform 700ms cubic-bezier(0.16, 1, 0.3, 1) 720ms;
+  }
+
+  /*
+    `[data-no-entry]` opts a line out of the entry: it is present from the
+    start and only ever moves on hover, which lives on `.reveal__swap` and is
+    untouched by any of this.
+
+    Written as `:not(...) .reveal__inner` with `:has()` on the ancestor rather
+    than a child chain, so it does not depend on how deeply the <Reveal> is
+    wrapped.
+  */
+  :global(html.js [data-project] .reveal:not([data-no-entry] *) .reveal__inner) {
+    transform: translateX(-105%);
+  }
+
+  :global(html.js [data-project].is-in .reveal:not([data-no-entry] *) .reveal__inner) {
+    transform: translateX(0);
+    transition:
+      transform 900ms cubic-bezier(0.16, 1.11, 0.3, 1)
+      var(--project-line-delay, 0ms);
+  }
+
+  /* Belt and braces: `html.js` is never set under reduced motion, so none of
+     the holds above apply — these only guarantee it. */
+  @media (prefers-reduced-motion: reduce) {
+    .project__media {
+      clip-path: none;
+      transition: none;
+    }
+
+    :global([data-project] .reveal__inner),
+    :global([data-project] .project__mark),
+    :global([data-project] .project__go) {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+</style>
+
+{/* `html.js` — the flag every held entry state keys off — is set in
+    BaseLayout, before first paint and once per page rather than once per
+    project. */}
+
+<script>
+  /*
+    One observer for every project on the page. Each block reveals as it
+    crosses into view and is then unobserved — this is an entry animation, not
+    a scroll effect, so it must never replay when the user scrolls back up.
+
+    The held state itself lives in CSS (see `html.js` above): by the time this
+    module runs the page has already painted, so holding the lines from here
+    would show them in their final position for a frame first.
+  */
+  const blocks = Array.from(document.querySelectorAll<HTMLElement>('[data-project]'));
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  if (blocks.length > 0 && !reduced.matches) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+
+          const block = entry.target as HTMLElement;
+          observer.unobserve(block);
+
+          // Delays MUST be set before `.is-in`: the class is what starts the
+          // transition, and a delay written afterwards arrives too late to
+          // apply to the move already in flight — every line would land at
+          // once. Staggering them is what makes the words follow the wipe
+          // rather than race it.
+          // Opted-out lines are filtered here too, not just in CSS: leaving
+          // them in the list would consume a stagger slot and push every line
+          // after them later by 70ms.
+          const lines = Array.from(
+            block.querySelectorAll<HTMLElement>('[data-reveal]'),
+          ).filter((line) => !line.closest('[data-no-entry]'));
+
+          lines.forEach((line, i) => {
+            line.style.setProperty('--project-line-delay', `${380 + i * 70}ms`);
+          });
+
+          block.classList.add('is-in');
+        }
+      },
+      // Fires once a little of the block is showing, so it is already moving
+      // by the time it is properly on screen.
+      { rootMargin: '0px 0px -12% 0px', threshold: 0.15 },
+    );
+
+    for (const block of blocks) observer.observe(block);
+  }
+</script>

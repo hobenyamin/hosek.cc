@@ -1,6 +1,7 @@
 ---
 import BaseHead from '../components/BaseHead.astro';
 import Frame from '../components/Frame.astro';
+import RevealIntro from '../components/RevealIntro.astro';
 import { SITE } from '../consts';
 import { Font } from "astro:assets";
 
@@ -23,10 +24,28 @@ const pageTitle = title ? `${title} — ${SITE.name}` : SITE.title;
     <BaseHead title={pageTitle} description={description} image={image} type={type} />
     <Font cssVariable='--font-satoshi'/>
   </head>
-  <body class="antialiased bg-[#fafafafa]">
+  <body class="antialiased bg-paper text-ink">
+    {/* Every entry animation holds its element in an offscreen state until it
+        is released. Those holds are gated on `html.js` so they exist only when
+        the scripts that release them will actually run: a page whose modules
+        fail still renders normally rather than staying blank.
+
+        Inline and first in the body so it lands before anything paints — a
+        hold applied later would flash the final state for a frame. Reduced
+        motion never sets it, which skips every entry at the source. */}
+    <script is:inline>
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('js');
+      }
+    </script>
+
     <Frame />
 
-    <slot />
+    <slot/>
+
+    {/* Sweeps every <Reveal> line in. Last in the body so it sees the whole
+        page, including the frame. */}
+    <RevealIntro />
 
     {/* Global grain overlay — sits above ALL content, never interactive.
         Rendered once here so no transformed ancestor can clip it. */}

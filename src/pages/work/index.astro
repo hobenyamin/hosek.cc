@@ -1,142 +1,75 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { ArrowDownRight, ArrowRight, X } from '@lucide/astro';
+import Project from '../../components/Project.astro';
+import Masthead from '../../components/Masthead.astro';
+import Reveal from '../../components/Reveal.astro';
+import { ArrowDownRight } from '@lucide/astro';
+
+/**
+ * The staggered placement is the point of this page: projects sit in
+ * different columns so the page reads as a composition rather than a grid of
+ * equal tiles.
+ *
+ * That needs three tracks to stagger across, so the col-starts below only
+ * apply from md up. Below md every project takes the full width and the empty
+ * spacer cells collapse away.
+ */
+const PROJECTS = [
+  { index: 1, name: 'Weborio', liveUrl: 'https://weborio.cz', class: 'md:col-start-1' },
+  { index: 2, name: 'Nikolas Hošek', liveUrl: 'https://hosek.cc', class: 'md:col-start-2' },
+  { index: 3, name: 'KovoKošťálek', liveUrl: 'https://kovokostalek.cz', class: 'md:col-start-2' },
+  { index: 4, name: 'Notes', class: 'md:col-start-3' },
+];
+
+const [p1, p2, p3, p4] = PROJECTS;
 ---
 
-<BaseLayout>
-    <section id="work" class="px-6 py-30 space-y-10">
-        <div class="grid grid-cols-3 gap-10">
-            <div class="@container flex gap-10">
+<BaseLayout title="Work" description="Selected design and frontend projects.">
+    <section id="work" class="relative z-10 px-4 md:px-6">
+        <div class="pt-24 pb-24 md:pt-30 md:pb-30">
+
+            {/* Same rhythm as /about: one gap owns the distance from the
+                masthead to the content, at both widths. */}
+            <div class="flex flex-col gap-14 md:gap-y-25">
+            <div class="flex flex-col gap-14 md:grid md:grid-cols-3 md:gap-x-10">
+                <div class="@container flex gap-10">
                 <div>
-                    <span class="text-9xl leading-none">Works</span>
+                    <Masthead class="text-7xl sm:text-8xl md:text-7xl lg:text-8xl xl:text-9xl leading-none">Work</Masthead>
                 </div>
                 <div class="flex flex-col justify-between">
-                    <span class="text-2xl uppercase font-medium">(4)</span>
-                    <ArrowDownRight size={68} class=""/>
+                    <span class="text-lg lg:text-2xl uppercase font-medium"><Reveal>(4)</Reveal></span>
+                    <ArrowDownRight class="size-11 stroke-2 masthead__arrow"/>
                 </div>
-                
             </div>
-            <div class="flex items-end">
-                <span class="text-xs uppercase font-semibold">&copy EST. 2026</span>
+
+            {/* One row on a phone, two grid cells from md — contents dissolves
+                the wrapper so the desktop layout is untouched. */}
+            <div class="flex justify-between gap-6 md:contents">
+                <div class="flex items-end">
+                    <span class="text-[10px] font-semibold uppercase font-mono tracking-widest md:text-xs"><Reveal><span class="text-ink-50">Selected projects &mdash;</span> 2026</Reveal></span>
+                </div>
+                <div class="flex flex-col justify-end">
+                    <Reveal class="text-ink-50 text-[10px] font-semibold uppercase font-mono tracking-widest md:text-xs">Digital</Reveal>
+                    <Reveal class="text-ink-50 text-[10px] font-semibold uppercase font-mono tracking-widest md:text-xs">UI/UX Design</Reveal>
+                    <Reveal class="text-[10px] font-semibold uppercase font-mono tracking-widest md:text-xs">Web Development</Reveal>
+                </div>
+                </div>
             </div>
-            <div class="flex flex-col justify-end">
-                <span class="text-xs uppercase font-semibold">Digital</span>
-                <span class="text-xs uppercase font-semibold">Web Development</span>
-                <span class="text-xs uppercase font-semibold">UI/UX Design</span>
+
+            {/* Two rows on desktop so the stagger has somewhere to happen; a
+                single column of four on a phone. The outer gap above already
+                sets the distance from the masthead, so these rows only own the
+                space between themselves. */}
+            <div class="flex flex-col gap-14 md:grid md:grid-cols-3 md:gap-x-10">
+                <Project {...p1} />
+                <Project {...p2} />
+            </div>
+
+            <div class="flex flex-col gap-14 md:grid md:grid-cols-3 md:gap-x-10">
+                <Project {...p3} />
+                <Project {...p4} />
+            </div>
             </div>
         </div>
-
-        <div class="grid grid-cols-3 gap-10 mt-25">
-            <div class="flex flex-col">
-                <div>Name</div>
-                <div class="bg-black aspect-4/3"></div>
-                <div>Description</div>
-            </div>
-
-            <div class="flex flex-col">
-                <div>Name</div>
-                <div class="bg-black aspect-4/3"></div>
-                <div>Description</div>
-            </div>
-
-            <div class="relative h-full w-full">
-                fill
-            </div>
-        </div>
-
-        <div class="grid grid-cols-3 gap-10">
-            <div class="flex flex-col">
-                <!-- <div>Name</div>
-                <div class="bg-black aspect-4/3"></div>
-                <div>Description</div>
-                
-                fill
-                
-                -->
-            </div>
-
-            <div class="flex flex-col">
-                <div>Name</div>
-                <div class="bg-black aspect-4/3"></div>
-                <div>Description</div>
-            </div>
-
-            <div class="flex flex-col">
-                <div>Name</div>
-                <div class="bg-black aspect-4/3"></div>
-                <div>Description</div>
-            </div>
-        </div>
-
-        <!-- <div class="flex flex-col gap-10 mt-25">
-            <div class="grid grid-cols-3 gap-10">
-                <div class="col-span-2 aspect-16/9 bg-black">
-                    image placeholder
-                </div>
-                <div class="flex flex-col justify-between">
-                    <div class="flex flex-col gap-2">
-                        <div>
-                            <span class="text-xs uppercase font-semibold">00-1/</span>
-                        </div>
-                        <div class="flex justify-between items-end">
-                            <div class="flex items-center gap-3">
-                                <X size={12} stroke-width={3}/>
-                                <div>
-                                    <span class="text-3xl font-medium tracking-tight">Nikolas Hošek &reg;</span>
-                                </div>
-                            </div>
-                            <div>
-                                <span class="text-xs uppercase font-semibold">Portfolio</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-10">
-                        <div class="space-y-2 max-w-md">
-                            <span class="text-xs uppercase font-semibold block">Designed and developed my personal portfolio to show of my personal and freelance work as an inpiration for others and showoff my skills.</span>
-                            <ul class="pl-5">
-                                <li class="text-xs uppercase font-semibold flex items-center gap-2"><X size={12} stroke-width={3}/>Design</li>
-                                <li class="text-xs uppercase font-semibold flex items-center gap-2"><X size={12} stroke-width={3}/>Development</li>
-                                <li class="text-xs uppercase font-semibold flex items-center gap-2"><X size={12} stroke-width={3}/>Branding</li>
-                                <li class="text-xs uppercase font-semibold flex items-center gap-2"><X size={12} stroke-width={3}/>Content</li>
-                            </ul>
-                        </div>
-                        <div class="flex">
-                            <a href="/" class="text-xs uppercase font-semibold flex items-center gap-2">
-                                <span>Learn more</span>
-                            <ArrowRight size={12}/>
-
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-10">
-                <div class="col-span-2 aspect-16/9 bg-black">
-                    image placeholder
-                </div>
-                <div class="flex items-end">
-                    <span class="text-xs uppercase font-semibold">Description</span>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-10">
-                <div class="col-span-2 aspect-16/9 bg-black">
-                    image placeholder
-                </div>
-                <div class="flex items-end">
-                    <span class="text-xs uppercase font-semibold">Description</span>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-10">
-                <div class="col-span-2 aspect-16/9 bg-black">
-                    image placeholder
-                </div>
-                <div class="flex items-end">
-                    <span class="text-xs uppercase font-semibold">Description</span>
-                </div>
-            </div>
-        </div> -->
     </section>
 </BaseLayout>

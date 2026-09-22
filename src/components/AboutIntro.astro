@@ -1,0 +1,138 @@
+---
+/**
+ * Entry for /about's body.
+ *
+ * Deliberately NOT /work's gesture. That page is a sequence you scroll
+ * through, so each project wipes in horizontally as you reach it. This one is
+ * a single composition — `md:h-dvh`, three columns, four numbered sections all
+ * on screen at once — so it should arrive as a composition: everything RISES
+ * into place together, sectioned by column, rather than sweeping sideways.
+ *
+ * The unit is the section, not the line. Each `[data-about]` block lifts as
+ * one object with its own small delay, so the eye reads 00-1 / 00-2 / 00-3
+ * across the page while each section stays internally whole. Animating every
+ * line separately here would be forty-odd movements on one screen — noise,
+ * where /work's per-line stagger works because you only ever see one project
+ * at a time.
+ *
+ * The swatch strip is the exception and gets its own treatment: five bars of
+ * increasing weight are a natural little sequence, so they grow from the
+ * baseline one after another, like a level meter finding its reading.
+ */
+---
+
+<style>
+  /*
+    Held below and faded. `html.js` is set in BaseLayout before first paint, so
+    nothing is ever visible in its final position first — and a page whose
+    module fails to load renders normally, with no entry at all.
+  */
+  :global(html.js [data-about]) {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+
+  :global(html.js [data-about].is-in) {
+    opacity: 1;
+    transform: translateY(0);
+    /* Long and heavily eased out, so the page settles rather than snaps. The
+       delay is written per section by the script below. */
+    transition:
+      opacity 700ms ease-out var(--about-delay, 0ms),
+      transform 1000ms cubic-bezier(0.16, 1, 0.3, 1) var(--about-delay, 0ms);
+  }
+
+  /*
+    The swatches grow from their own baseline, so the strip fills like a meter.
+    `transform-origin` is the bottom edge because that is where they sit
+    against the text below on desktop; on a phone they stretch full width and
+    the same growth still reads.
+  */
+  :global(html.js [data-about-swatch] > *) {
+    opacity: 0;
+    transform: scaleY(0.12);
+    transform-origin: 50% 100%;
+  }
+
+  :global(html.js [data-about-swatch].is-in > *) {
+    opacity: 1;
+    transform: scaleY(1);
+    transition:
+      opacity 300ms ease-out var(--swatch-delay, 0ms),
+      transform 620ms cubic-bezier(0.16, 1.11, 0.3, 1) var(--swatch-delay, 0ms);
+  }
+
+  /*
+    The portrait wipes DOWN, where /work's covers wipe across. A face arriving
+    top-to-bottom reads as it being uncovered; the same horizontal wipe used on
+    the project covers would just make this page look like that one.
+
+    It lands last, after every section has settled.
+  */
+  :global(html.js .about__portrait) {
+    clip-path: inset(0 0 100% 0);
+  }
+
+  :global(html.js.is-about-in .about__portrait) {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 900ms cubic-bezier(0.16, 1, 0.3, 1) 900ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global([data-about]),
+    :global([data-about-swatch] > *) {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    :global(.about__portrait) {
+      clip-path: none;
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  /*
+    Sections are released in DOM order, which on this page IS reading order —
+    00-1 through 00-4, then the portrait. No screen-position sort is needed
+    here (unlike the frame's, which spans three separate fixed subtrees).
+
+    Everything is released together on load rather than on scroll: at md the
+    whole page is one screen, so there is nothing below the fold to wait for.
+    On a phone it becomes a tall column and the lower sections will have
+    finished before they are reached — acceptable, because the alternative is
+    an observer firing on blocks that are already three screens up.
+  */
+  const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-about]'));
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  if (sections.length > 0 && !reduced.matches) {
+    sections.forEach((section, i) => {
+      // Starts after the masthead's word has begun its rise (260ms), so the
+      // body follows the title rather than competing with it.
+      section.style.setProperty('--about-delay', `${420 + i * 90}ms`);
+    });
+
+    const strip = document.querySelector<HTMLElement>('[data-about-swatch]');
+    if (strip) {
+      Array.from(strip.children).forEach((bar, i) => {
+        (bar as HTMLElement).style.setProperty('--swatch-delay', `${520 + i * 70}ms`);
+      });
+    }
+
+    // Two frames: one for the browser to paint the held state, one to be sure
+    // it has. Transitioning from an unpainted state is the usual reason an
+    // entry silently does not run.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        for (const section of sections) section.classList.add('is-in');
+        strip?.classList.add('is-in');
+        // The portrait sits in a different part of the markup, so it is driven
+        // from <html> rather than by a relationship with anything here.
+        document.documentElement.classList.add('is-about-in');
+      });
+    });
+  }
+</script>

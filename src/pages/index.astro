@@ -1,5 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import WorkRail from '../components/WorkRail.astro';
+import { getFeaturedProjects, getProjects } from '../lib/work';
+
+// Falls back to every project while nothing is marked `featured`.
+const featured = await getFeaturedProjects();
+const projects = featured.length > 0 ? featured : await getProjects();
 ---
 
-<BaseLayout></BaseLayout>
+<BaseLayout>
+  <h1 class="sr-only">Selected work</h1>
+  <WorkRail projects={projects} />
+</BaseLayout>

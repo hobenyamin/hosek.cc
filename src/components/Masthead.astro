@@ -1,0 +1,122 @@
+---
+/**
+ * The page's display word — "Work", "About" — and its arrow.
+ *
+ * Deliberately NOT a <Reveal>. The mono lines around it sweep left to right
+ * with the frame, because they are the same species of text as the frame's own
+ * labels. This is the only thing on the page at display size, so it gets a
+ * gesture nothing else uses: a rise from below the baseline, slower than the
+ * sweep, arriving on its own.
+ *
+ * The arrow lands last and nudges down as it fades, echoing the direction it
+ * points — it is the "keep going" marker, so it resolves after everything
+ * above it has settled.
+ */
+interface Props {
+  /** The display word. */
+  children?: unknown;
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+---
+
+<div class={`masthead ${className}`} data-masthead>
+  <span class="masthead__mask">
+    <span class="masthead__word"><slot /></span>
+  </span>
+</div>
+
+<style>
+  /* The mask clips only along the travel axis. `inline-block` on both layers
+     keeps the word's own line box, so the page's type scale still drives the
+     size — nothing here sets a font. */
+  .masthead__mask {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+    /* Descenders would otherwise be shaved by the mask at rest. */
+    padding-block: 0.08em;
+    margin-block: -0.08em;
+  }
+
+  .masthead__word {
+    display: inline-block;
+    will-change: transform;
+  }
+
+  /*
+    Held below the mask until the frame's sweep is under way, then released.
+    `html.js` is set before first paint (see BaseLayout), so the word is never
+    visible in its final position first — and a page whose JS fails renders it
+    normally, with no entry at all.
+  */
+  :global(html.js) .masthead__word {
+    transform: translateY(110%);
+  }
+
+  :global(html.js) [data-masthead].is-in .masthead__word {
+    transform: translateY(0);
+    /* Slower than the mono sweep and heavily eased out, so the weight of the
+       type reads. The delay lets the frame start first. */
+    transition: transform 1100ms cubic-bezier(0.16, 1, 0.3, 1) 260ms;
+  }
+
+  /*
+    The arrow resolves last. It is a marker, not type, so it fades rather than
+    slides — with a small downward nudge that echoes where it points.
+
+    Global and matched anywhere on the page: it is a lucide <svg>, rendered by
+    a component that never carries this file's scope id. Its delay clears the
+    whole masthead — the word's 260ms + 1100ms — so nothing is still moving
+    when it appears.
+  */
+  :global(html.js .masthead__arrow) {
+    opacity: 0;
+    /*
+      Swings rather than travels. The icon points down-right at rest (its
+      stroke runs 7,7 → 17,17), so starting a quarter turn anticlockwise has
+      it pointing UP-right, and releasing to 0 swings it clockwise into place
+      like a needle settling.
+
+      Rotation only — no translate. The arrow stays exactly where the layout
+      put it and just changes what it points at.
+    */
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+
+  /* Keyed off <html> rather than the masthead element: the arrow sits in a
+     different part of the markup on each page, so any relationship selector
+     between the two would be page-specific. */
+  :global(html.js.is-in .masthead__arrow) {
+    opacity: 1;
+    transform: rotate(0deg);
+    transition:
+      opacity 600ms ease-out 900ms,
+      transform 800ms cubic-bezier(0.16, 1, 0.3, 1) 900ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(html.js) .masthead__word,
+    :global(html.js .masthead__arrow) {
+      transform: none;
+      opacity: 1;
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  // Released on the next frame rather than immediately: the held state has to
+  // be painted once before the transition to it will run at all.
+  const words = document.querySelectorAll<HTMLElement>('[data-masthead]');
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      for (const word of words) word.classList.add('is-in');
+      // Drives the arrow, which lives elsewhere in the markup on each page.
+      document.documentElement.classList.add('is-in');
+    });
+  });
+</script>

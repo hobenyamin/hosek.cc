@@ -6,9 +6,31 @@
 @theme {
   --font-sans: var(--font-satoshi);
   
-  --color-rail-bg:;
-  --color-rail-ink:;
-  --color-rail-dim:;
+  /*
+    Warm paper and warm ink, not #fff/#000. Pure black on pure white shimmers
+    at the edges on most screens; a near-black carrying the same warmth as the
+    paper makes the two read as one material.
+
+    Orange is a STATE colour, not a decorative one — status dots, link hover,
+    the active nav item, index numbers. It stops feeling precise the moment it
+    appears on more than a handful of elements.
+  */
+  --color-paper: #f4f2ec;
+  --color-ink: #14130f;
+  /* --color-signal: #ff4a17; */
+  --color-signal: #2D4BFF;
+
+  /* Ink at fixed strengths, so opacity does not have to be guessed per use.
+     These are pre-mixed against paper rather than alpha, so text over the
+     grain overlay stays the colour it claims to be. */
+  --color-ink-70: color-mix(in oklab, var(--color-ink) 70%, var(--color-paper));
+  --color-ink-50: color-mix(in oklab, var(--color-ink) 50%, var(--color-paper));
+  --color-ink-20: color-mix(in oklab, var(--color-ink) 20%, var(--color-paper));
+
+  /* The rail inherits the same palette. */
+  --color-rail-bg: var(--color-paper);
+  --color-rail-ink: var(--color-ink);
+  --color-rail-dim: var(--color-ink-50);
 
   /*
     The homepage rail's geometry and feel. These are read back at runtime by
@@ -40,6 +62,9 @@
   --rail-step: 0.34;
   --rail-glide: 700;
 
+  /* The size the rail grows from on load. 1 disables the entry scale. */
+  --rail-zoom: 0.82;
+
   --rail-fade: 0.12;
   --rail-fade-min: 0.4;
 }
@@ -69,7 +94,7 @@ body {
 .g_grain_overlay {
   position: absolute;
   inset: 0;
-  opacity: 0.45;
+  opacity: 0.67;
   pointer-events: none;
   background-image: url('/images/background_effect.png');
   background-size: auto;
