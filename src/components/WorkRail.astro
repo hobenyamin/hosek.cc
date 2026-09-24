@@ -144,10 +144,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
     display: block;
   }
 
+  /* 100svh, not inset: 0 — a fixed height, so Safari's toolbar growing and
+     shrinking doesn't move the rail's centre. */
   .rail--live .rail__list {
     display: block;
     position: fixed;
-    inset: 0;
+    inset: 0 0 auto;
+    height: 100svh;
     z-index: 1;
   }
 
@@ -224,7 +227,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
   .rail--live .rail__meta {
     display: flex;
     position: fixed;
-    inset: 0;
+    inset: 0 0 auto;
+    height: 100svh;
     z-index: 2;
     pointer-events: none;
   }
@@ -378,11 +382,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
       activeH = originals[0].offsetHeight;
       gapPx = activeH * num('--rail-gap', 0.03);
       clearPx = num('--rail-clear', 0);
-      halfView = window.innerHeight / 2;
+      halfView = viewH() / 2;
       cullAt = halfView + activeH;
 
       // Scroll distance per project, as a share of the screen height.
-      step = Math.max(1, window.innerHeight * num('--rail-step', 0.34));
+      step = Math.max(1, viewH() * num('--rail-step', 0.34));
 
       buildLadder();
 
@@ -392,6 +396,14 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
       loop = items.length * step;
       anchor = Math.round(RUNWAY / 2 / loop) * loop;
+    }
+
+    /**
+     * Screen height that ignores Safari's toolbar: the small viewport on iOS,
+     * the normal height everywhere else. Matches the layers' 100svh.
+     */
+    function viewH() {
+      return document.documentElement.clientHeight;
     }
 
     /** Copies the covers until they fill the screen. */
@@ -599,7 +611,16 @@ const pad = (n: number) => String(n).padStart(2, '0');
       window.addEventListener(type, () => { snapping = false; }, { passive: true });
     }
 
+    // Only re-measure on a real resize (width, or the stable height). iOS
+    // Safari fires resize every time its toolbar grows or shrinks while
+    // scrolling; re-measuring then made the rail jump mid-swipe.
+    let lastW = window.innerWidth;
+    let lastH = viewH();
     window.addEventListener('resize', () => {
+      if (window.innerWidth === lastW && viewH() === lastH) return;
+      lastW = window.innerWidth;
+      lastH = viewH();
+
       const centred = Math.round((window.scrollY - anchor) / step);
       measure();
       jump(anchor + centred * step);
