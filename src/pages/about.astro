@@ -117,8 +117,17 @@ import pfp from '../assets/pfp.jpg';
                             {/* Brackets stay put and only the label swaps, so
                                 the `[ ]` reads as a frame the text moves
                                 inside rather than sliding along with it. */}
-                            <a href="mailto:hosek@weborio.cz" class="text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>hosek@weborio.cz</Reveal> <span class="text-ink">]</span></a>
-                            <a href="tel:+420605485485" class="text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>+420 605 485 485</Reveal> <span class="text-ink">]</span></a>
+                            {/* A button, like the frame's address: clicking
+                                copies rather than opening a mail client.
+                                `aria-label` carries the verb, since the
+                                visible text is only the address and the
+                                cursor's label is aria-hidden. */}
+                            <button type="button" data-copy="hosek@weborio.cz" data-cursor="Copy" data-cursor-done="Copied" aria-label="Copy email address hosek@weborio.cz" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>hosek@weborio.cz</Reveal> <span class="text-ink">]</span></button>
+                            {/* A copy button too, matching the address above
+                                it: both pieces of contact information behave
+                                the same way rather than one copying and one
+                                handing off to the dialler. */}
+                            <button type="button" data-copy="+420605485485" data-cursor="Copy" data-cursor-done="Copied" aria-label="Copy phone number +420 605 485 485" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>+420 605 485 485</Reveal> <span class="text-ink">]</span></button>
                         </div>
                     </div>
                     <div class="flex flex-col gap-5" data-about>
@@ -134,8 +143,11 @@ import pfp from '../assets/pfp.jpg';
                             </div>
                         </div>
                         <div class="flex flex-col">
-                            <a href="https://instagram.com/" class="text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>INSTAGRAM</Reveal> <span class="text-ink">]</span></a>
-                            <a href="https://github.com/" class="text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>GITHUB</Reveal> <span class="text-ink">]</span></a>
+                            {/* `target`/`rel` alongside the cursor's "Visit":
+                                the label says it leaves, so the link should
+                                actually leave rather than replacing the page. */}
+                            <a href="https://instagram.com/" target="_blank" rel="noreferrer" data-cursor="Visit" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>INSTAGRAM</Reveal> <span class="text-ink">]</span></a>
+                            <a href="https://github.com/" target="_blank" rel="noreferrer" data-cursor="Visit" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>GITHUB</Reveal> <span class="text-ink">]</span></a>
                         </div>
                     </div>
 

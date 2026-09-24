@@ -75,7 +75,7 @@
 
   :global(html.js.is-about-in .about__portrait) {
     clip-path: inset(0 0 0 0);
-    transition: clip-path 900ms cubic-bezier(0.16, 1, 0.3, 1) 900ms;
+    transition: clip-path 900ms cubic-bezier(0.16, 1, 0.3, 1) var(--portrait-delay, 900ms);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -99,39 +99,81 @@
     00-1 through 00-4, then the portrait. No screen-position sort is needed
     here (unlike the frame's, which spans three separate fixed subtrees).
 
-    Everything is released together on load rather than on scroll: at md the
-    whole page is one screen, so there is nothing below the fold to wait for.
-    On a phone it becomes a tall column and the lower sections will have
-    finished before they are reached — acceptable, because the alternative is
-    an observer firing on blocks that are already three screens up.
+    From md the whole page is one screen, so everything is released together
+    on load — there is nothing below the fold to wait for.
+
+    Below md it is a tall column, and releasing everything at once put the
+    lower sections on screen at load, underneath the fixed footer's
+    "Available" line. So on a phone each block waits until it has mostly
+    cleared the footer, the way /work's projects arrive as you reach them.
+    Whatever is already clear at load still arrives as one staggered
+    composition; blocks reached later come in on their own, without the
+    opening delay.
   */
   const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-about]'));
+  const strip = document.querySelector<HTMLElement>('[data-about-swatch]');
+  const portrait = document.querySelector<HTMLElement>('.about__portrait');
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const desktop = window.matchMedia('(min-width: 768px)');
+
+  // Starts after the masthead's word has begun its rise (260ms), so the body
+  // follows the title rather than competing with it.
+  const OPEN = 420;
+  const STEP = 90;
+
+  const release = (el: HTMLElement, delay: number) => {
+    if (el === strip) {
+      Array.from(el.children).forEach((bar, i) => {
+        (bar as HTMLElement).style.setProperty('--swatch-delay', `${delay + 100 + i * 70}ms`);
+      });
+      el.classList.add('is-in');
+    } else if (el === portrait) {
+      // The portrait's clip lives on <html> (it sits in another part of the
+      // markup), so its delay does too.
+      document.documentElement.style.setProperty('--portrait-delay', `${delay}ms`);
+      document.documentElement.classList.add('is-about-in');
+    } else {
+      el.style.setProperty('--about-delay', `${delay}ms`);
+      el.classList.add('is-in');
+    }
+  };
 
   if (sections.length > 0 && !reduced.matches) {
-    sections.forEach((section, i) => {
-      // Starts after the masthead's word has begun its rise (260ms), so the
-      // body follows the title rather than competing with it.
-      section.style.setProperty('--about-delay', `${420 + i * 90}ms`);
-    });
-
-    const strip = document.querySelector<HTMLElement>('[data-about-swatch]');
-    if (strip) {
-      Array.from(strip.children).forEach((bar, i) => {
-        (bar as HTMLElement).style.setProperty('--swatch-delay', `${520 + i * 70}ms`);
-      });
-    }
-
     // Two frames: one for the browser to paint the held state, one to be sure
     // it has. Transitioning from an unpainted state is the usual reason an
     // entry silently does not run.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        for (const section of sections) section.classList.add('is-in');
-        strip?.classList.add('is-in');
-        // The portrait sits in a different part of the markup, so it is driven
-        // from <html> rather than by a relationship with anything here.
-        document.documentElement.classList.add('is-about-in');
+        if (desktop.matches) {
+          sections.forEach((section, i) => release(section, OPEN + i * STEP));
+          if (strip) release(strip, OPEN);
+          if (portrait) release(portrait, 900);
+          return;
+        }
+
+        const blocks = [strip, ...sections, portrait].filter(Boolean) as HTMLElement[];
+        let first = true;
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            const arrived = entries
+              .filter((e) => e.isIntersecting && e.intersectionRatio >= 0.6)
+              .map((e) => e.target as HTMLElement)
+              .sort((a, b) => blocks.indexOf(a) - blocks.indexOf(b));
+
+            arrived.forEach((el, i) => {
+              observer.unobserve(el);
+              release(el, (first ? OPEN : 0) + i * STEP);
+            });
+            first = false;
+          },
+          // The bottom inset keeps the strip the footer sits on out of the
+          // viewport as far as this is concerned; 0.6 means a block is mostly
+          // above that line before it shows, not just its top edge.
+          { rootMargin: '0px 0px -64px 0px', threshold: [0, 0.6] },
+        );
+
+        for (const block of blocks) observer.observe(block);
       });
     });
   }

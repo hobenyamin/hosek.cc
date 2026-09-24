@@ -67,6 +67,39 @@ const { as: Tag = 'span', order, swap = false, class: className = '' } = Astro.p
     will-change: transform;
   }
 
+  /*
+    Held offscreen from the very first paint.
+
+    This used to be set by RevealIntro in JS, which meant the browser painted
+    every line in place, THEN the deferred module ran and shoved them out of
+    view — visible as a flash of fully-loaded text on a fast refresh.
+
+    `html.js` is set inline in <head>, before the stylesheet, so this hold is
+    in force before anything can paint. A page whose modules never run still
+    shows its text, because the flag is only set when scripts are alive, and
+    RevealIntro clears the transform once it has animated.
+  */
+  :global(html.js) .reveal__inner {
+    transform: translateX(-110%);
+  }
+
+  /*
+    Lines whose entry is owned by something else opt out, or they would be
+    held here with nothing to release them:
+
+      [data-project]   /work's blocks slide their own lines on scroll.
+      [data-about]     /about's sections rise as whole blocks on load.
+      [data-no-entry]  present from the start, hover-only.
+
+    All three are excluded from RevealIntro's sweep for the same reason, so a
+    hold applied here would simply never come off.
+  */
+  :global(html.js [data-project]) .reveal__inner,
+  :global(html.js [data-about]) .reveal__inner,
+  :global(html.js [data-no-entry]) .reveal__inner {
+    transform: none;
+  }
+
   /* --------------------------------------------------------------- swap */
 
   /*

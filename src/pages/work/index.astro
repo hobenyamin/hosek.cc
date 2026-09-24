@@ -4,6 +4,7 @@ import Project from '../../components/Project.astro';
 import Masthead from '../../components/Masthead.astro';
 import Reveal from '../../components/Reveal.astro';
 import { ArrowDownRight } from '@lucide/astro';
+import { getProjects } from '../../lib/work';
 
 /**
  * The staggered placement is the point of this page: projects sit in
@@ -13,15 +14,36 @@ import { ArrowDownRight } from '@lucide/astro';
  * That needs three tracks to stagger across, so the col-starts below only
  * apply from md up. Below md every project takes the full width and the empty
  * spacer cells collapse away.
+ *
+ * The projects themselves now come from the content collection — the same
+ * source the homepage rail reads — so a project is written once, in one
+ * markdown file, and shows up in both places with a case study behind it.
+ * Only the column placement stays the page's own business: that is a
+ * composition decision the content has no opinion about.
  */
-const PROJECTS = [
-  { index: 1, name: 'Weborio', liveUrl: 'https://weborio.cz', class: 'md:col-start-1' },
-  { index: 2, name: 'Nikolas Hošek', liveUrl: 'https://hosek.cc', class: 'md:col-start-2' },
-  { index: 3, name: 'KovoKošťálek', liveUrl: 'https://kovokostalek.cz', class: 'md:col-start-2' },
-  { index: 4, name: 'Notes', class: 'md:col-start-3' },
-];
+const COLUMNS = ['md:col-start-1', 'md:col-start-2', 'md:col-start-2', 'md:col-start-3'];
 
-const [p1, p2, p3, p4] = PROJECTS;
+const PROJECTS = (await getProjects()).map((project, i) => ({
+  index: i + 1,
+  name: project.data.title,
+  category: project.data.role.join(' & ') || undefined,
+  liveUrl: project.data.url,
+  cover: project.data.cover,
+  coverAlt: project.data.coverAlt,
+  // Hover gallery is paused until the page screenshots are redone. To bring
+  // it back: import getFrames and pass `frames: getFrames(project.id)`.
+  // Cycles once there are more projects than planned columns, so a fifth
+  // project lands back in column 1 rather than losing its placement.
+  class: COLUMNS[i % COLUMNS.length],
+}));
+
+const total = PROJECTS.length;
+
+// Two to a row, so the stagger has somewhere to happen. Derived rather than
+// destructured: the count is whatever the collection holds now.
+const rows = Array.from({ length: Math.ceil(total / 2) }, (_, r) =>
+  PROJECTS.slice(r * 2, r * 2 + 2),
+);
 ---
 
 <BaseLayout title="Work" description="Selected design and frontend projects.">
@@ -37,7 +59,7 @@ const [p1, p2, p3, p4] = PROJECTS;
                     <Masthead class="text-7xl sm:text-8xl md:text-7xl lg:text-8xl xl:text-9xl leading-none">Work</Masthead>
                 </div>
                 <div class="flex flex-col justify-between">
-                    <span class="text-lg lg:text-2xl uppercase font-medium"><Reveal>(4)</Reveal></span>
+                    <span class="text-lg lg:text-2xl uppercase font-medium"><Reveal>({total})</Reveal></span>
                     <ArrowDownRight class="size-11 stroke-2 masthead__arrow"/>
                 </div>
             </div>
@@ -56,19 +78,15 @@ const [p1, p2, p3, p4] = PROJECTS;
                 </div>
             </div>
 
-            {/* Two rows on desktop so the stagger has somewhere to happen; a
-                single column of four on a phone. The outer gap above already
-                sets the distance from the masthead, so these rows only own the
+            {/* Two per row on desktop so the stagger has somewhere to happen;
+                a single column on a phone. The outer gap above already sets
+                the distance from the masthead, so these rows only own the
                 space between themselves. */}
-            <div class="flex flex-col gap-14 md:grid md:grid-cols-3 md:gap-x-10">
-                <Project {...p1} />
-                <Project {...p2} />
-            </div>
-
-            <div class="flex flex-col gap-14 md:grid md:grid-cols-3 md:gap-x-10">
-                <Project {...p3} />
-                <Project {...p4} />
-            </div>
+            {rows.map((row) => (
+                <div class="flex flex-col gap-14 md:grid md:grid-cols-3 md:gap-x-10">
+                    {row.map((project) => <Project {...project} />)}
+                </div>
+            ))}
             </div>
         </div>
     </section>

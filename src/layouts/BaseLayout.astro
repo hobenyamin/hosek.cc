@@ -2,6 +2,7 @@
 import BaseHead from '../components/BaseHead.astro';
 import Frame from '../components/Frame.astro';
 import RevealIntro from '../components/RevealIntro.astro';
+import Cursor from '../components/Cursor.astro';
 import { SITE } from '../consts';
 import { Font } from "astro:assets";
 
@@ -23,21 +24,27 @@ const pageTitle = title ? `${title} — ${SITE.name}` : SITE.title;
   <head>
     <BaseHead title={pageTitle} description={description} image={image} type={type} />
     <Font cssVariable='--font-satoshi'/>
-  </head>
-  <body class="antialiased bg-paper text-ink">
+
     {/* Every entry animation holds its element in an offscreen state until it
         is released. Those holds are gated on `html.js` so they exist only when
         the scripts that release them will actually run: a page whose modules
         fail still renders normally rather than staying blank.
 
-        Inline and first in the body so it lands before anything paints — a
-        hold applied later would flash the final state for a frame. Reduced
-        motion never sets it, which skips every entry at the source. */}
+        IN <head>, not <body>. The stylesheet is in the head too, so a script
+        placed in the body can run after the browser has already painted a
+        frame — and that frame has no `html.js`, so every held element renders
+        fully visible before snapping out of sight. That was the flash of
+        content when navigating to /work and /about. The index page never
+        showed it because the rail hides itself in plain CSS, with no flag.
+
+        Reduced motion never sets it, which skips every entry at the source. */}
     <script is:inline>
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
         document.documentElement.classList.add('js');
       }
     </script>
+  </head>
+  <body class="antialiased bg-paper text-ink">
 
     <Frame />
 
@@ -52,5 +59,9 @@ const pageTitle = title ? `${title} — ${SITE.name}` : SITE.title;
     <div class="g_overlay" aria-hidden="true">
       <div class="g_grain_overlay u-grain-animate"></div>
     </div>
+
+    {/* The custom cursor. Last in the body and above the grain (z-200 vs
+        z-100), so nothing is ever painted over it. */}
+    <Cursor />
   </body>
 </html>

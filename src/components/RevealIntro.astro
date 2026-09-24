@@ -59,9 +59,10 @@
       })
       .map((entry) => entry.el);
 
-    // Offscreen state is set here rather than in CSS, so text is never hidden
-    // on a page whose module fails to load.
-    for (const el of inners) el.style.transform = 'translateX(-110%)';
+    // The offscreen state is NOT set here — it is held in CSS under `html.js`
+    // (see Reveal.astro), which applies before the first paint. Setting it
+    // from this deferred module meant the browser painted every line in place
+    // first, which showed as a flash of loaded text on a fast refresh.
 
     // Two frames: one for the browser to paint the offscreen state, one to be
     // sure it has. Animating from an unpainted state is the usual reason an

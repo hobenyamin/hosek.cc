@@ -43,9 +43,16 @@ const pad = (n: number) => String(n).padStart(2, '0');
             data-year={String(year)}
             data-role={discipline}
           >
+            {/* An <a> again, but to /work rather than to a per-project page:
+                those do not exist yet, and the work index is the honest
+                answer to "show me this". The cursor says "Work" so the
+                destination is named before the click.
+
+                Point this at the project's own page when those land. */}
             <a
               class="rail__link block w-[var(--rail-w)] text-rail-ink no-underline"
-              href={`/work/${project.id}`}
+              href="/work"
+              data-cursor="Work"
             >
               {cover ? (
                 <Image
@@ -92,7 +99,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
         `data-rail-*` hooks therefore sit on the INNER span — the same split
         <Reveal> uses, done by hand because the content is written by JS. */}
     <div class="flex w-[88vw] max-w-[22rem] shrink-0 grow-0 items-baseline justify-center gap-2 md:w-auto md:flex-1 md:basis-0 md:flex-col md:items-end md:gap-0 md:text-right">
-      <p class="rail__line m-0 font-black text-signal">
+      <p class="rail__line m-0 font-black text-ink-50">
         <span class="rail__line-in" data-rail-counter></span>
       </p>
       {/* The title is the one line here that is a NAME rather than metadata,
@@ -576,6 +583,43 @@ const pad = (n: number) => String(n).padStart(2, '0');
         const y = offsetAt(s);
         const h = tileHeight(away);
 
+        /*
+          The cursor has to match what a click will actually do — the click
+          handler below only lets the CENTRED tile follow its href, and
+          centres any other one instead.
+
+          Same threshold as that handler (half a step), so the cursor can
+          never disagree with the behaviour.
+
+          The two signals say different things and are set together:
+
+            label   the action this click performs — "Focus" brings the tile
+                    up, "Work" opens the page. Naming it is what makes the
+                    rail's one non-obvious rule legible: that an off-centre
+                    cover is a target to reach, not a link to follow.
+            mute    that this is a step on the way rather than the
+                    destination.
+
+          ABOVE THE CULL, deliberately. A tile that is off-screen still gets
+          its label, so it is already correct the moment it scrolls back in.
+          Below the cull it would keep whatever it was last given — and a tile
+          that had never been rendered at all would still carry the markup's
+          "Work", flashing the un-muted face when the pointer first met it
+          near the edge.
+
+          Written only on change, so a rail drifting past a stationary pointer
+          does not rewrite the same two attributes every frame — each write
+          would wake the cursor's MutationObserver.
+        */
+        const centred = away < 0.5;
+        const label = centred ? 'Work' : 'Focus';
+        const link = el.firstElementChild as HTMLElement;
+
+        if (link.getAttribute('data-cursor') !== label) {
+          link.setAttribute('data-cursor', label);
+          link.toggleAttribute('data-cursor-mute', !centred);
+        }
+
         // Cull against the tile's own height rather than the active tile's,
         // or the small far ones stay alive well below the fold.
         if (Math.abs(y) - h / 2 > halfView) {
@@ -590,7 +634,6 @@ const pad = (n: number) => String(n).padStart(2, '0');
         el.style.opacity = opacity.toFixed(3);
         el.style.zIndex = String(1000 - Math.round(away * 10));
 
-        const link = el.firstElementChild as HTMLElement;
         link.style.transform = `scale(${(h / activeH).toFixed(4)})`;
       }
 

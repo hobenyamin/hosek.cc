@@ -1,7 +1,9 @@
 ---
 import { ArrowRight } from '@lucide/astro';
 import { X } from '@lucide/astro';
+import { Image } from 'astro:assets';
 import Reveal from './Reveal.astro';
+import type { Frame } from '../lib/work';
 
 /**
  * One project block on /work.
@@ -22,8 +24,11 @@ interface Props {
   category?: string;
   /** Live site. Omitted while a project has nothing public to point at. */
   liveUrl?: string;
-  /** Case study. */
-  href?: string;
+  /** The mockup. Without one the box stays plain ink. */
+  cover?: ImageMetadata;
+  coverAlt?: string;
+  /** Screens of the site, cycled in a floating frame on hover. */
+  frames?: Frame[];
   class?: string;
 }
 
@@ -32,9 +37,31 @@ const {
   name,
   category = 'Design & Development',
   liveUrl,
-  href = '/',
+  cover,
+  coverAlt = '',
+  frames = [],
   class: className = '',
 } = Astro.props;
+
+/* The box is a third of the page from md, full width below. */
+const SIZES = '(min-width: 768px) 33vw, 100vw';
+
+/*
+  There is no per-project page yet, so the block links nowhere.
+
+  "Learn more" still reads as the block's invitation, because that is what it
+  will be. What changes is that it is not an <a>: a dead link is focusable,
+  looks clickable and promises a page that is not there. It is a <span>, and
+  the custom cursor is what tells you why — `data-cursor="Preview soon"` opens the
+  label on hover, so the page does not have to carry the caveat in its own
+  layout.
+
+  `data-cursor-mute` picks the cursor's quiet face: this is a note about why
+  nothing happens, not a button.
+
+  When the project pages land: make it an <a href>, and change the cursor
+  label from "Preview soon" to "Read".
+*/
 ---
 
 {/* `data-project` is the entry unit: the script below wipes the image in and
@@ -64,28 +91,78 @@ const {
     </div>
   </div>
 
-  <a href={href} class="project__media block bg-ink aspect-4/3"></a>
+  {/* The cover carries the same label as the invitation below it: the whole
+      block is the thing that is coming, not just the line of text.
+
+      The mockup sits in an oversized layer so the scroll drift has room to
+      move without showing an edge. On hover it blurs and darkens, and the
+      site's own screens cycle in a frame floating above it. */}
+  <div
+    class="project__media relative block overflow-hidden bg-ink aspect-4/3"
+    data-cursor="Preview soon"
+    data-cursor-mute
+    data-gallery={frames.length > 0 ? '' : undefined}
+  >
+    {cover && (
+      <div class="gallery__drift absolute inset-x-0 inset-y-[-8%]" data-drift>
+        <Image
+          class="gallery__cover size-full object-cover"
+          src={cover}
+          alt={coverAlt}
+          widths={[800, 1200, 1600, 2000]}
+          sizes={SIZES}
+        />
+      </div>
+    )}
+    {frames.length > 0 && (
+      <div class="gallery__frame absolute left-1/2 top-1/2 w-[82%]" aria-hidden="true">
+        {frames.map((frame) =>
+          frame.kind === 'image' ? (
+            <Image
+              class="gallery__shot"
+              src={frame.src}
+              alt=""
+              widths={[800, 1200, 1600]}
+              sizes={SIZES}
+              data-shot
+            />
+          ) : (
+            <video class="gallery__shot" src={frame.src} muted playsinline preload="none" data-shot />
+          ),
+        )}
+      </div>
+    )}
+  </div>
 
   <div class="flex items-center justify-between gap-4">
     {liveUrl ? (
-      <a class="flex items-center gap-1 w-fit" href={liveUrl} target="_blank" rel="noreferrer">
+      <a class="flex items-center gap-1 w-fit" href={liveUrl} target="_blank" rel="noreferrer" data-cursor="Visit">
         <span class="text-sm md:text-[12px] lg:text-sm font-medium text-ink-50 underline hover:text-ink"><Reveal swap>Live website</Reveal></span>
       </a>
     ) : (
       <span></span>
     )}
 
-    <a class="flex items-center gap-1 w-fit shrink-0" href={href}>
-      <span class="text-ink-50 text-[10px] font-semibold uppercase font-mono tracking-widest transition-all hover:text-ink md:text-xs">
-        {/* Brackets stay put and only the label swaps, matching /about's
-            contact links — the `[ ]` is a frame the text moves inside.
+    {/* A <span>, not an <a> — see the note above. The arrow stays so the block
+        keeps its shape, but nothing here is focusable or clickable, and the
+        cursor is what explains that. */}
+    <span class="flex items-center gap-1 w-fit shrink-0" data-cursor="Preview soon" data-cursor-mute>
+      {/* `project__go` on the label too, so it fades and nudges in with the
+          arrow beside it as one unit — brackets included, which is why the
+          whole span carries it rather than the <Reveal> inside.
 
-            `data-no-entry` keeps it out of the block's entry animation: this
-            line is present from the start and only ever moves on hover. */}
-        <span class="text-ink">[</span> <span data-no-entry><Reveal swap>Learn more</Reveal></span> <span class="text-ink">]</span>
+          `data-no-entry` still keeps the Reveal's own per-line SLIDE off: the
+          label must not travel out from behind a mask while the brackets
+          around it stay put.
+
+          No `swap` while it is pending: the swap is a hover gesture, and
+          hovering something that does not respond is a worse promise than a
+          label that sits still. The cursor does the responding instead. */}
+      <span class="project__go text-ink-50 text-[10px] font-semibold uppercase font-mono tracking-widest md:text-xs">
+        <span class="text-ink-20">[</span> <span data-no-entry><Reveal>Learn more</Reveal></span> <span class="text-ink-20">]</span>
       </span>
       <ArrowRight size={12} stroke-width={3} class="project__go"/>
-    </a>
+    </span>
   </div>
 </div>
 
@@ -114,6 +191,89 @@ const {
 
   :global(html.js) [data-project].is-in .project__media {
     clip-path: inset(0 0 0 0);
+  }
+
+  /*
+    Under the wipe the mockup comes into focus: it starts blurred and a
+    touch large, and sharpens and settles a little behind the travelling
+    edge, so the picture is still resolving as the wipe finishes. On the
+    drift layer rather than the <img>, so it never fights the hover filter,
+    and via `scale` so it never fights the drift's transform.
+  */
+  :global(html.js) .gallery__drift {
+    filter: blur(18px);
+    scale: 1.08;
+  }
+
+  :global(html.js) [data-project].is-in .gallery__drift {
+    filter: none;
+    scale: 1;
+    transition:
+      filter 1300ms cubic-bezier(0.16, 1, 0.3, 1) 100ms,
+      scale 1600ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /*
+    Gallery. The mockup's layer is 16% taller than the box; the script drifts
+    it through that slack as the box crosses the viewport (`--drift`, -1 to
+    1), so the picture moves a little slower than the page around it.
+
+    `.is-playing` is the hover (or, on touch, the box sitting mid-screen):
+    the mockup blurs and darkens into a backdrop and the frame rises over it.
+    Global selectors because <Image> renders its own <img> without this
+    file's scope id.
+  */
+  .gallery__drift {
+    transform: translate3d(0, calc(var(--drift, 0) * -7%), 0);
+    will-change: transform;
+  }
+
+  .project__media :global(.gallery__cover) {
+    transition:
+      filter 700ms cubic-bezier(0.16, 1, 0.3, 1),
+      scale 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .project__media.is-playing :global(.gallery__cover) {
+    filter: blur(10px) brightness(0.45);
+    scale: 1.06;
+  }
+
+  .gallery__frame {
+    aspect-ratio: 1920 / 947;
+    translate: -50% -46%;
+    opacity: 0;
+    box-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.6);
+    transition:
+      opacity 400ms ease-out,
+      translate 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .project__media.is-playing .gallery__frame {
+    translate: -50% -50%;
+    opacity: 1;
+  }
+
+  /*
+    Stacked; the script marks whichever is current. A short crossfade: the
+    incoming shot fades in on top while the outgoing one holds underneath,
+    then drops once it is covered — so the frame never dips to the backdrop.
+  */
+  .project__media :global(.gallery__shot) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    opacity: 0;
+    transition: opacity 0ms linear 220ms;
+  }
+
+  .project__media :global(.gallery__shot.is-shown) {
+    z-index: 1;
+    opacity: 1;
+    transition: opacity 220ms ease-out;
   }
 
   /*
@@ -213,6 +373,12 @@ const {
       transition: none;
     }
 
+    .gallery__drift {
+      transform: none;
+      filter: none;
+      scale: 1;
+    }
+
     :global([data-project] .reveal__inner),
     :global([data-project] .project__mark),
     :global([data-project] .project__go) {
@@ -274,5 +440,134 @@ const {
     );
 
     for (const block of blocks) observer.observe(block);
+  }
+</script>
+
+<script>
+  /*
+    Gallery behaviour, in two parts that never touch each other:
+
+    Drift — every mockup on screen gets `--drift` from -1 (box entering at
+    the bottom) to 1 (leaving at the top). One scroll listener batched into a
+    frame; boxes off screen are skipped via an observer. Lenis scrolls the
+    real window, so the native scroll event is enough.
+
+    Play — while a box is hovered (or, without hover, sits mid-screen) its
+    frames cycle, each one crossfading quickly over the last. Images hold for HOLD ms; a video holds for
+    its own length. Leaving stops the cycle, and the next visit starts from
+    the first frame again, so it always opens on the homepage.
+  */
+  const HOLD = 1400;
+
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduced) {
+    /* ---- Drift ---- */
+    const onScreen = new Set<HTMLElement>();
+    let queued = false;
+
+    const drift = () => {
+      queued = false;
+      const vh = window.innerHeight;
+      for (const box of onScreen) {
+        const r = box.getBoundingClientRect();
+        const travel = (vh + r.height) / 2;
+        const p = (vh / 2 - (r.top + r.height / 2)) / travel;
+        const layer = box.querySelector<HTMLElement>('[data-drift]');
+        layer?.style.setProperty('--drift', Math.max(-1, Math.min(1, p)).toFixed(4));
+      }
+    };
+    const queue = () => {
+      if (!queued) {
+        queued = true;
+        requestAnimationFrame(drift);
+      }
+    };
+
+    const visible = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) onScreen.add(e.target as HTMLElement);
+        else onScreen.delete(e.target as HTMLElement);
+      }
+      queue();
+    });
+    for (const layer of document.querySelectorAll('[data-drift]')) {
+      visible.observe(layer.parentElement as HTMLElement);
+    }
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue);
+
+    /* ---- Play ---- */
+    const galleries = Array.from(document.querySelectorAll<HTMLElement>('[data-gallery]'));
+
+    const player = (box: HTMLElement) => {
+      const shots = Array.from(box.querySelectorAll<HTMLElement>('[data-shot]'));
+      let current = -1;
+      let timer = 0;
+      let playing = false;
+
+      // Stopping leaves the last shot showing, so it fades out with the
+      // frame instead of vanishing ahead of it; the next start fades the
+      // first shot in over it.
+      const stop = () => {
+        window.clearTimeout(timer);
+        for (const shot of shots) {
+          if (shot instanceof HTMLVideoElement) shot.pause();
+        }
+      };
+
+      const show = (i: number) => {
+        const prev = shots[current];
+        const shot = shots[i];
+        current = i;
+
+        if (prev) {
+          prev.classList.remove('is-shown');
+          if (prev instanceof HTMLVideoElement) prev.pause();
+        }
+        shot.classList.add('is-shown');
+
+        const next = () => {
+          if (playing && shots.length > 1) show((current + 1) % shots.length);
+        };
+
+        if (shot instanceof HTMLVideoElement) {
+          shot.currentTime = 0;
+          shot.onended = next;
+          shot.play().catch(() => (timer = window.setTimeout(next, HOLD)));
+        } else {
+          timer = window.setTimeout(next, HOLD);
+        }
+      };
+
+      return (on: boolean) => {
+        if (on === playing) return;
+        playing = on;
+        box.classList.toggle('is-playing', on);
+        stop();
+        if (on && shots.length) show(0);
+      };
+    };
+
+    const hover = window.matchMedia('(hover: hover)').matches;
+
+    if (hover) {
+      for (const box of galleries) {
+        const play = player(box);
+        box.addEventListener('pointerenter', () => play(true));
+        box.addEventListener('pointerleave', () => play(false));
+      }
+    } else {
+      // Touch: a thin band across the middle of the screen stands in for
+      // the pointer, so the box plays while it is the thing being looked at.
+      const players = new Map(galleries.map((box) => [box, player(box)]));
+      const middle = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) players.get(e.target as HTMLElement)?.(e.isIntersecting);
+        },
+        { rootMargin: '-40% 0px -40% 0px' },
+      );
+      for (const box of galleries) middle.observe(box);
+    }
   }
 </script>
