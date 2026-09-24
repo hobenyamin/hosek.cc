@@ -1,14 +1,12 @@
-/**
- * Site-wide values. Nothing else should hardcode your name, links or copy —
- * edit here and the metadata and page frame follow.
- */
+// Site-wide values. Change them here, not in the pages.
 
 export const SITE = {
   name: 'Nikolas Hošek',
-  /** Homepage <title>; other pages render 'Thing — Name'. */
+  /** Homepage title. Other pages use "Page — Name". */
   title: 'Nikolas Hošek — Designer & Frontend Developer',
   description:
-    'Designer and frontend developer in Prague. I design interfaces and then build them — portfolio, selected work and contact.',
+    'Designer and frontend developer in Olomouc, Czechia. I design interfaces and then build them — portfolio, selected work and contact.',
+  jobTitle: 'Designer & Frontend Developer',
   /** Must match `site` in astro.config.mjs. */
   url: 'https://hosek.cc',
   locale: 'en',
@@ -18,18 +16,12 @@ export const SITE = {
 
 export const CONTACT = {
   email: 'hosek@weborio.cz',
-  /** Human-readable; `telHref` is the dialable form. */
-  phone: '(+420) 605 485 485',
-  telHref: 'tel:+420605485485',
-  location: 'Prague, Czechia',
-  /** Shown verbatim on /about — keep it dated, not vague. */
-  availability: 'Available for freelance from March 2026',
+  /** `phone` is shown, `phoneRaw` is copied. */
+  phone: '+420 605 485 485',
+  phoneRaw: '+420605485485',
+  city: 'Olomouc',
+  country: 'CZ',
 };
-
-export const SOCIALS: { label: string; href: string }[] = [
-  { label: 'GitHub', href: 'https://github.com/' },
-  { label: 'LinkedIn', href: 'https://linkedin.com/in/' },
-];
 
 export const NAV: { label: string; href: string }[] = [
   { label: 'Index', href: '/' },

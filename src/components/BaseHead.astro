@@ -1,5 +1,6 @@
 ---
-import { SITE } from '../consts';
+import { CONTACT, SITE } from '../consts';
+import { publicPath } from '../lib/path';
 import '../styles/global.css';
 
 interface Props {
@@ -17,8 +18,36 @@ const {
   type = 'website',
 } = Astro.props;
 
-const canonical = new URL(Astro.url.pathname.replace(/\/$/, '') || '/', Astro.site);
+const canonical = new URL(publicPath(Astro.url.pathname), Astro.site);
 const socialImage = new URL(image, Astro.site);
+
+// Structured data for search engines: who you are, and the site.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Person',
+      '@id': `${SITE.url}/#person`,
+      name: SITE.name,
+      jobTitle: SITE.jobTitle,
+      url: SITE.url,
+      email: `mailto:${CONTACT.email}`,
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: CONTACT.city,
+        addressCountry: CONTACT.country,
+      },
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE.url}/#website`,
+      name: SITE.name,
+      url: SITE.url,
+      inLanguage: SITE.locale,
+      publisher: { '@id': `${SITE.url}/#person` },
+    },
+  ],
+};
 ---
 
 <meta charset="utf-8" />
@@ -28,17 +57,27 @@ const socialImage = new URL(image, Astro.site);
 <title>{title}</title>
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical} />
+<meta name="author" content={SITE.name} />
+{/* Tints the mobile browser bar to match the page. */}
+<meta name="theme-color" content="#f4f2ec" />
 
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="sitemap" href="/sitemap-index.xml" />
 
 <meta property="og:type" content={type} />
+<meta property="og:site_name" content={SITE.name} />
+<meta property="og:locale" content="en_US" />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />
 <meta property="og:image" content={socialImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={`${SITE.name} — ${SITE.jobTitle}`} />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={socialImage} />
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />

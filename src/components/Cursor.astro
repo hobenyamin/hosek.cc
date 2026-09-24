@@ -1,87 +1,34 @@
 ---
 /**
- * The custom cursor.
+ * The custom cursor: a dot plus a small label that appears over anything
+ * with `data-cursor`.
  *
- * One element for the whole site. It follows the pointer and, over anything
- * carrying `data-cursor`, opens to show that element's label — "Copy",
- * "Soon", "Visit" — so an affordance can say what it does without the page
- * having to find room for the words.
+ *   <a data-cursor="Visit">                    label on hover
+ *   <span data-cursor="Soon" data-cursor-mute> dimmed label, nothing to click
+ *   <button data-cursor="Copy" data-cursor-done="Copied">
  *
- * HOW TO USE IT
+ * When an element sets `data-cursor-state="done"`, the label switches to its
+ * `data-cursor-done` text (`failed` works the same way).
  *
- *   <a href="..." data-cursor="Visit">…</a>      label on hover
- *   <span data-cursor="Soon" data-cursor-mute>…  label, dimmed: nothing to click
- *   <button data-cursor="Copy" data-cursor-done="Copied">…
- *
- * A state is reported by the element as `data-cursor-state="done"`, and the
- * cursor then shows that state's own label — `data-cursor-done` — until the
- * pointer leaves. `failed` works the same way via `data-cursor-failed`.
- *
- * Nothing here performs the copy. The element owns its behaviour and reports
- * what happened; this only reflects it.
- *
- * WHY IT IS NOT `cursor: none` EVERYWHERE
- *
- * The native cursor is hidden ONLY while a labelled element is hovered, and
- * replaced there by the dot and its label. Everywhere else the browser's own
- * pointer is left exactly as it is.
- *
- * That is deliberate. The native cursor is the one thing that reliably
- * distinguishes a link from a text field from a drag handle, and it does so
- * on every page, including the parts nobody remembered to annotate. Replacing
- * it site-wide trades all of that for decoration, and makes every unlabelled
- * affordance feel inert.
- *
- * It also means text selection, disabled controls and anything else with a
- * meaningful cursor keep it for free, rather than each needing to be carved
- * back out by hand.
- *
- * TOUCH AND REDUCED MOTION
- *
- * Both skip it entirely, and `cursor: none` is never set for them — the
- * `has-cursor` class that gates it is only added once the script confirms a
- * fine pointer, so a browser that never runs this module is untouched.
- *
- * Reduced motion keeps the dot and the label (both are information) and drops
- * only the easing, so they appear where the pointer already is.
+ * The normal cursor is only hidden over labelled elements, and not at all on
+ * touch screens.
  */
 ---
 
-{/*
-  aria-hidden: every label here duplicates something the element itself
-  already says, or says something an assistive user gets from the element's
-  own state. Announcing it twice is noise.
-
-  Outside the <Frame> and after it in the DOM, with a z-index above the grain
-  overlay (z-100) — the cursor is the topmost thing on the page.
-
-  Just a dot and a label. The layer is empty until the pointer meets something
-  labelled, so there is nothing here to draw while the native cursor is doing
-  its ordinary job.
-*/}
+{/* Hidden from screen readers — the labels repeat what the elements already say. */}
 <div class="cursor" data-cursor-root aria-hidden="true">
   <div class="cursor__dot" data-cursor-dot></div>
   <div class="cursor__label" data-cursor-label><span data-cursor-text></span></div>
 </div>
 
 <style>
-  /*
-    The layer is fixed and never interactive: it sits under the pointer, so
-    any hit-testing of its own would make it hover itself and nothing else.
-  */
   .cursor {
-    /* ------------------------------------------------------------------
-       EVERY KNOB THE CURSOR HAS. Change these, not the rules below.
-
-       The rules further down reference these and nothing else, so a colour
-       or a size is set in exactly one place here rather than hunted for
-       across six selectors.
-       ------------------------------------------------------------------ */
+    /* All the cursor settings. Change these, not the rules below. */
 
     /* Colour of the dot, by state. */
     --cursor-mark: var(--color-ink);
     --cursor-mark-active: var(--color-ink);
-    /* Over something labelled but not clickable ("Soon"). */
+    /* Muted, e.g. "Soon". */
     --cursor-mark-mute: var(--color-ink-50);
     /* After a successful copy. */
     --cursor-mark-done: var(--color-signal);
@@ -96,11 +43,10 @@
 
     /* Diameter of the dot. */
     --cursor-dot-size: 0.5rem;
-    /* Gap from the pointer to the label's top-left corner. Clear of the dot,
-       and of the native arrow still being drawn underneath it. */
+    /* Gap between the pointer and the label. */
     --cursor-label-offset: 0.875rem;
 
-    /* Motion. `--cursor-fade` must match FADE_MS in the script below. */
+    /* Motion. `--cursor-fade` must match FADE_MS in the script. */
     --cursor-ease: cubic-bezier(0.16, 1, 0.3, 1);
     --cursor-turn: 320ms;
     --cursor-fade: 420ms;
@@ -110,11 +56,8 @@
     left: 0;
     z-index: 200;
     pointer-events: none;
-    /* Hidden until the pointer's first real move. Without this it would sit
-       in the top-left corner from load until the mouse is touched. */
+    /* Hidden until the mouse first moves. */
     opacity: 0;
-    /* Composited away from layout: `translate3d` on a fixed element never
-       triggers reflow, so following the pointer costs one paint. */
     will-change: transform;
   }
 
@@ -122,15 +65,7 @@
     opacity: 1;
   }
 
-  /*
-    The dot marks the point being addressed while a label is open — it is
-    what the label is attached to, so the two arrive and leave together.
-
-    It is NOT a replacement for the native cursor: the real pointer is still
-    drawn everywhere except over labelled elements, and this only appears
-    where it has something to say. So it starts at nothing and scales up,
-    rather than sitting on the page waiting.
-  */
+  /* The dot grows in with the label. */
   .cursor__dot {
     position: absolute;
     top: 0;
@@ -154,31 +89,22 @@
     transform: scale(1);
   }
 
-  /* The muted face dims the dot along with the label, so the two never
-     disagree about how live the thing under the pointer is. */
   .cursor[data-mute] .cursor__dot {
     background: var(--cursor-mark-mute);
   }
 
-  /* State colours the dot too — the accent reaches the mark, not just the
-     label beside it. */
   .cursor[data-state='done'] .cursor__dot {
     background: var(--cursor-mark-done);
   }
 
   /*
-    The label opens down and to the right of the pointer — the direction the
-    arrow points, so it never covers what is being pointed at.
-
-    Mono caps at the frame's own micro-size: this is the same species of text
-    as the frame's labels, not a tooltip in a different voice.
+    The label sits below-right of the pointer, in the same mono style as the
+    frame text.
   */
   .cursor__label {
     position: absolute;
     top: 0;
     left: 0;
-    /* Offset from the pointer. Keep it clear of half the mark or the chip
-       touches the cross. */
     margin: var(--cursor-label-offset) 0 0 var(--cursor-label-offset);
     padding: 0.35em 0.6em;
     background: var(--cursor-label-bg);
@@ -192,11 +118,7 @@
     white-space: nowrap;
     border-radius: 2px;
 
-    /*
-      Clipped from the left, the same wipe the project covers and the mobile
-      menu use — the label arrives by being uncovered rather than by scaling,
-      so it belongs to the same family of gestures as the rest of the site.
-    */
+    /* Wipes in from the left, like the covers and the menu. */
     clip-path: inset(0 100% 0 0);
     opacity: 0;
     transition:
@@ -209,34 +131,25 @@
     opacity: 1;
   }
 
-  /*
-    The muted face: for a label that is describing why there is nothing to
-    click ("Soon"). Same shape, inverted weight — it reads as a note rather
-    than as a button.
-  */
+  /* Muted: nothing to click. */
   .cursor[data-mute] .cursor__label {
     background: var(--cursor-label-mute-bg);
     color: var(--cursor-label-mute-ink);
   }
 
-  /* The confirmation face borrows the one accent the site already reserves
-     for state. */
+  /* Done: the accent colour. */
   .cursor[data-state='done'] .cursor__label {
     background: var(--cursor-label-done-bg);
     color: var(--cursor-label-done-ink);
   }
 
-  /* Failure keeps the muted face rather than inventing an error colour: the
-     site has one accent and it means "state", not "good". */
+  /* Failed: muted, no error colour. */
   .cursor[data-state='failed'] .cursor__label {
     background: var(--cursor-label-mute-bg);
     color: var(--cursor-label-mute-ink);
   }
 
-  /*
-    Reduced motion keeps the label — it is information — and drops only the
-    travel and the wipe, so it appears where the pointer already is.
-  */
+  /* Reduced motion: no wipe, the label just appears. */
   @media (prefers-reduced-motion: reduce) {
     .cursor__dot,
     .cursor__label {
@@ -247,57 +160,37 @@
 
 <script>
   /*
-    One listener on the document, not one per labelled element.
-
-    Labels are read from `data-cursor` at hover time rather than collected up
-    front, so anything added to the page later — a project block, a menu that
-    was not open at load — is picked up with no re-registration.
+    One listener for the whole page. Labels are read on hover, so elements
+    added later just work.
   */
   const root = document.querySelector<HTMLElement>('[data-cursor-root]');
   const text = root?.querySelector<HTMLElement>('[data-cursor-text]');
 
-  // A coarse pointer has no hover to read, so the whole layer stays out of the
-  // way. Checked once: a device does not grow a mouse mid-session, and the
-  // `hover` media query is the reliable signal here, not screen width.
+  // Mouse only — touch screens get no custom cursor.
   const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   if (root && text && fine.matches) {
-    // Gates the `cursor: none` rule below. Set on <html> rather than assumed
-    // in CSS so a browser that never runs this module keeps its real cursor.
+    // Turns on the `cursor: none` rule at the bottom.
     document.documentElement.classList.add('has-cursor');
 
     let pointerX = 0;
     let pointerY = 0;
     let frame = 0;
-    // The element whose label is currently showing. Kept so `data-cursor-state`
-    // can be re-read without another DOM query on every frame.
+    // The element whose label is showing.
     let active: HTMLElement | null = null;
 
-    /*
-      How long the label's exit takes. Must match the longest transition on
-      `.cursor__label` above — the 420ms clip-path — because it is what
-      decides when the face can be cleared without the change being visible.
-    */
+    /* How long the label takes to fade out (matches --cursor-fade). */
     const FADE_MS = 420;
     let clearFace = 0;
 
-    /*
-      Position is written in an animation frame, not in the pointer handler.
-
-      A pointermove can fire many times per frame on a high-rate mouse, and
-      each write would be a separate style recalculation for a position that
-      is about to be overwritten. Coalescing to one write per frame makes the
-      cost independent of the pointer's report rate.
-    */
+    /* Move the cursor at most once per frame, however fast the mouse reports. */
     const render = () => {
       frame = 0;
       root.style.transform = `translate3d(${pointerX}px, ${pointerY}px, 0)`;
     };
 
     const schedule = () => {
-      // Under reduced motion there is no easing to smooth anyway, so the write
-      // is immediate and the frame is skipped entirely.
       if (reduced.matches) {
         render();
         return;
@@ -308,14 +201,13 @@
     document.addEventListener(
       'pointermove',
       (event) => {
-        // A pen or touch contact reaching this listener is not a hover, so it
-        // must not drag the layer into view.
+        // Ignore pen and touch.
         if (event.pointerType !== 'mouse') return;
 
         pointerX = event.clientX;
         pointerY = event.clientY;
 
-        // First real move reveals the layer — see `opacity: 0` above.
+        // Show it on the first move.
         if (!root.hasAttribute('data-ready')) root.setAttribute('data-ready', '');
 
         schedule();
@@ -323,12 +215,7 @@
       { passive: true },
     );
 
-    /*
-      `pointerover` rather than `pointerenter` on each element: it bubbles, so
-      one listener covers the document, and `closest()` resolves the nearest
-      labelled ancestor — which means the label can be declared on a wrapper
-      and still apply to everything inside it.
-    */
+    /* `pointerover` bubbles, so one listener works for every element. */
     const sync = (target: EventTarget | null) => {
       const el =
         target instanceof Element ? target.closest<HTMLElement>('[data-cursor]') : null;
@@ -336,21 +223,11 @@
       if (!el) {
         active = null;
 
-        // Starts the fade immediately.
         root.removeAttribute('data-active');
 
         /*
-          The FACE — mute, state — is deliberately left alone here.
-
-          `background` and `color` are not transitioned, so clearing them now
-          would repaint the label in its default black-on-paper for the whole
-          420ms it is still fading out: a grey "Focus" would turn black on the
-          way off screen. Instead the face is held until the label is actually
-          gone, so it fades out looking exactly as it did.
-
-          Cleared on a timer rather than `transitionend`: the label is display-
-          present but invisible between hovers, and a pointer that leaves and
-          re-enters quickly cancels this (see below) rather than fighting it.
+          Keep the colours until the fade-out ends, or a grey label would turn
+          black on its way out.
         */
         clearTimeout(clearFace);
         clearFace = window.setTimeout(() => {
@@ -361,22 +238,12 @@
         return;
       }
 
-      // Re-entering before the fade finished: keep the face that is about to
-      // be set below rather than letting the pending clear wipe it mid-hover.
+      // Came back before it finished fading: keep the colours.
       clearTimeout(clearFace);
 
       active = el;
 
-      /*
-        A reported state wins over the resting label, so a button that has
-        just been used says "Copied" rather than "Copy".
-
-        The state names its own label attribute — `done` reads
-        `data-cursor-done`, `failed` reads `data-cursor-failed` — so a new
-        state needs no change here. `failed` falls back to a sensible default
-        rather than to the resting label, which would claim the action had
-        not happened when it had in fact gone wrong.
-      */
+      /* A state ("Copied") wins over the normal label. */
       const state = el.getAttribute('data-cursor-state');
       const resting = el.getAttribute('data-cursor') ?? '';
       const stateLabel = state ? el.getAttribute(`data-cursor-${state}`) : null;
@@ -393,11 +260,8 @@
     document.addEventListener('pointerover', (event) => sync(event.target));
 
     /*
-      An element can change under a pointer that has not moved, and no pointer
-      event fires for it. Two cases here: a copy button becoming "Copied", and
-      a rail tile going muted or unmuted as the rail drifts past it. Watching
-      the attributes is what makes the cursor reflect a change it did not
-      cause.
+      Update the label when an element changes under a still pointer, like a
+      copy button turning "Copied" or a rail cover passing the centre.
     */
     const observer = new MutationObserver(() => {
       if (active) sync(active);
@@ -415,8 +279,7 @@
       ],
     });
 
-    // Leaving the window entirely: without this the label would still be
-    // showing when the pointer came back over a different element.
+    // Hide it when the pointer leaves the window.
     document.addEventListener('pointerout', (event) => {
       if (!event.relatedTarget) {
         root.removeAttribute('data-ready');
@@ -428,14 +291,8 @@
 
 <style is:global>
   /*
-    The native cursor is hidden ONLY over labelled elements, and only once the
-    script has confirmed a fine pointer and can actually draw a replacement.
-    Everywhere else it stays exactly as the browser draws it: it is the one
-    thing that reliably distinguishes a text field from a link from a drag
-    handle, and replacing it site-wide trades that for decoration.
-
-    `!important` because the hidden cursor has to beat whatever `cursor:
-    pointer` the element or a utility class sets on itself.
+    Hide the normal cursor over labelled elements only. `!important` beats
+    `cursor: pointer` from utility classes.
   */
   html.has-cursor [data-cursor],
   html.has-cursor [data-cursor] * {

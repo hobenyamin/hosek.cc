@@ -9,19 +9,12 @@ interface Props {
 const { projects } = Astro.props;
 const total = projects.length;
 
-/** `03/41` in the mockup — always two digits so the counter never reflows. */
+/** "03/04" — always two digits so the counter never changes width. */
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /*
-  Two renderings of the same list live in this file.
-
-  Without JS you get `.rail__list` as it is written below: a plain vertical
-  column of linked covers with visible captions. It scrolls, it is crawlable,
-  and every project is one tab stop.
-
-  With JS the root picks up `.rail--live` and the same <li>s become a fixed
-  layer of absolutely positioned tiles driven by scroll offset — the focus rail
-  from the mockup. Nothing is re-rendered; only positioning changes.
+  Without JS this is a plain list of linked covers. With JS it becomes the
+  infinite scrolling rail: the same <li>s, just positioned by the script.
 */
 ---
 
@@ -43,12 +36,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
             data-year={String(year)}
             data-role={discipline}
           >
-            {/* An <a> again, but to /work rather than to a per-project page:
-                those do not exist yet, and the work index is the honest
-                answer to "show me this". The cursor says "Work" so the
-                destination is named before the click.
-
-                Point this at the project's own page when those land. */}
+            {/* Links to /work for now. Point it at the project page once those exist. */}
             <a
               class="rail__link block w-[var(--rail-w)] text-rail-ink no-underline"
               href="/work"
@@ -82,43 +70,32 @@ const pad = (n: number) => String(n).padStart(2, '0');
     }
   </ol>
 
-  {/* Duplicates the caption of whichever project is centred, so it is hidden
-      from assistive tech — the links themselves carry the real names. */}
-  {/* Everything visual here is a utility, so restyling the rail's text is a
-      markup edit — nothing in the style block below touches type, colour or
-      spacing any more. The rail__meta class survives only as the hook that
-      the live-state rule needs. */}
+  {/*
+    Caption of the centred project. Hidden from screen readers — the links
+    already have the names.
+  */}
   <div
     class="rail__meta hidden flex-col items-center justify-center gap-4 font-mono text-[10px] font-semibold leading-relaxed tracking-widest text-rail-ink uppercase md:flex-row md:gap-10 md:text-xs"
     aria-hidden="true"
   >
-    {/* Counter and title share one line on a phone and split onto two from md.
-        Four stacked lines around a cover read as a list; two read as a caption. */}
-    {/* Each line is its own mask with the text in a child: `setMeta` writes
-        textContent, which would wipe a mask nested inside the <p>. The
-        `data-rail-*` hooks therefore sit on the INNER span — the same split
-        <Reveal> uses, done by hand because the content is written by JS. */}
+    {/* Counter and title: one line on phones, two on desktop. */}
+    {/* The script writes the text into the inner spans. */}
     <div class="flex w-[88vw] max-w-[22rem] shrink-0 grow-0 items-baseline justify-center gap-2 md:w-auto md:flex-1 md:basis-0 md:flex-col md:items-end md:gap-0 md:text-right">
       <p class="rail__line m-0 font-black text-ink-50">
         <span class="rail__line-in" data-rail-counter></span>
       </p>
-      {/* The title is the one line here that is a NAME rather than metadata,
-          so it opts out of the panel's mono/uppercase treatment: normal case,
-          normal face, tighter tracking. The counter, year and role keep the
-          mono voice because they are data. */}
+      {/* The title is in the normal font; the rest is mono. */}
       <p class="rail__line m-0 font-sans text-base font-medium normal-case tracking-normal text-rail-ink md:text-lg">
         <span class="rail__line-in" data-rail-title></span>
       </p>
     </div>
 
-    {/* Reserves exactly the active tile so both columns hug its edges at any
-        width — a vertical spacer on mobile, a horizontal one from md. */}
+    {/* Spacer the size of the centred cover, so the captions sit around it. */}
     <div
       class="h-[calc(var(--rail-w)*var(--rail-rh)/var(--rail-rw))] w-auto shrink-0 grow-0 md:h-auto md:w-[var(--rail-w)]"
     ></div>
 
-    {/* Same collapse on the far side: role and year sit on one line below the
-        cover, and only separate into the mockup's two-line column at md. */}
+    {/* Role and year: one line on phones, two on desktop. */}
     <div class="flex w-[88vw] max-w-[22rem] shrink-0 grow-0 flex-row-reverse items-baseline justify-center gap-2 md:w-auto md:flex-1 md:basis-0 md:flex-col md:items-start md:gap-0 md:text-left">
       <p class="rail__line m-0 text-rail-dim">
         <span class="rail__line-in" data-rail-year></span>
@@ -132,7 +109,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   <div class="rail__runway hidden" data-rail-runway></div>
 </section>
 
-{/* Runs before the deferred module below, so the static list never flashes. */}
+{/* Runs right away so the plain list never flashes. */}
 <script is:inline>
   document.querySelector('[data-rail]').classList.add('rail--live');
   document.documentElement.classList.add('rail-host');
@@ -142,13 +119,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
   @reference '../styles/global.css';
 
   /*
-    What is left here is only what utilities genuinely cannot say: the
-    `.rail--live` state flip (a class toggled at runtime that restyles
-    descendants), and the responsive re-tuning of the engine variables.
-
-    Everything visual — type, colour, spacing, the meta panel's layout, the
-    cover's aspect ratio and placeholder — now lives in the markup as classes,
-    so changing how the rail looks is an edit up there, not down here.
+    Most styling is in the markup. This is just the live-rail state and the
+    phone tuning.
   */
 
   @media (max-width: 767px) {
@@ -157,32 +129,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
       --rail-spread: 1.55;
       --rail-clear: 64;
 
-      /*
-        A phone is tall and narrow, so the same curve that shows three tiles a
-        side on a desktop was showing six or seven here — the swell read as a
-        long list rather than one cover with a couple of neighbours.
-
-        The lever is the FLOOR, not the falloff: raising thumb-min makes the
-        far tiles bigger, so the running total reaches the bottom of the screen
-        in fewer steps and the cull happens sooner. (Raising spread does the
-        opposite — smaller tiles mean more of them fit before the edge.)
-
-        0.28 lands on 2-3 a side from a 375x667 phone up to a 412x915 one.
-      */
+      /* Phones: bigger far covers, so only 2–3 show on each side. */
       --rail-thumb-min: 0.28;
 
-      /* The neighbours sat about 3px apart, which read as a stack rather than
-         separate covers. 0.07 opens that to ~13px without changing how many
-         survive the cull. */
+      /* A bit more space between covers. */
       --rail-gap: 0.07;
-    }
-  }
-
-  /* The swell tracks the user's own scrolling rather than animating on its
-     own, so it stays; only the scripted glide to a clicked cover comes off. */
-  @media (prefers-reduced-motion: reduce) {
-    .rail {
-      --rail-glide: 0;
     }
   }
 
@@ -201,15 +152,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
   }
 
   /*
-    Between the inline script adding .rail--live and the deferred module first
-    running render(), every tile is absolutely positioned at 50%/50% with no
-    transform yet — i.e. all of them stacked dead centre. That showed as one
-    cover flashing in the middle before the rail scattered into place.
-
-    So the list stays invisible until the engine has positioned the tiles
-    once. .rail--placed is added at the end of the first render(). Visibility
-    rather than opacity: it does not create a compositing layer, and it still
-    lets the browser lay the tiles out underneath.
+    Hidden until the script has placed the covers, or they flash stacked in
+    the middle.
   */
   .rail--live .rail__list {
     visibility: hidden;
@@ -220,26 +164,9 @@ const pad = (n: number) => String(n).padStart(2, '0');
   }
 
   /*
-    Entry: the rail grows into place.
-
-    It starts small and settles at its resting size, so the covers scale up
-    into the layout rather than sliding in from anywhere.
-
-    Deliberately on the LIST, not on the tiles. `render()` owns `transform`
-    on every `.rail__item` and the `scale()` on every `.rail__link`, and
-    rewrites both every frame, so anything written alongside those is gone by
-    the next scroll frame. The list is the one layer in the rail that no JS
-    touches: scaling it composites the whole tile layer as a single object,
-    and render goes on working in its own coordinate space entirely unaware.
-    No per-frame JS and no ladder to rebuild.
-
-    Opacity rides along because the small state has to be SEEN for the growth
-    to read — the rail is `visibility: hidden` until `.rail--placed` lands, so
-    without a fade the covers would simply appear part-grown.
-
-    The delay holds until the frame's own sweep has finished: RevealIntro
-    staggers ~0.055s per line over a 0.9s slide, so the last of the frame's
-    ten lines lands around 1.4s. Two beats — the chrome arrives, then the work.
+    Entry: the rail grows into place after the header and footer text.
+    Scales the list, not the covers, because the script rewrites the covers'
+    transforms every frame.
   */
   .rail--live .rail__list {
     transform: scale(var(--rail-zoom, 0.82));
@@ -250,16 +177,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
   .rail--live.rail--placed .rail__list {
     transform: scale(1);
     opacity: 1;
-    /* Eased almost entirely out, so the last third is a slow settle rather
-       than a box finishing a resize. The fade is shorter and unguided — it
-       only has to get out of the way of the growth. */
     transition:
       transform 1100ms cubic-bezier(0.16, 1, 0.3, 1) 400ms,
       opacity 700ms ease-out 400ms;
   }
 
-  /* An unrequested scale on load is exactly the kind of motion this query
-     exists to suppress; the swell still tracks the user's own scrolling. */
+  /* No entry under reduced motion. */
   @media (prefers-reduced-motion: reduce) {
     .rail--live .rail__list {
       transform: none;
@@ -274,8 +197,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     left: 50%;
     width: var(--rail-w);
     aspect-ratio: var(--rail-rw) / var(--rail-rh);
-    /* The box stays full size and the link scales inside it, so a shrunken
-       cover's hit area shrinks with it rather than staying full-bleed. */
+    /* The link scales inside the box, so smaller covers are smaller to click. */
     pointer-events: none;
     will-change: transform, filter, opacity;
   }
@@ -287,7 +209,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     transform-origin: 50% 50%;
   }
 
-  /* Still announced, still a real link — just no longer drawn. */
+  /* Still a real link for screen readers, just not drawn. */
   .rail--live .rail__caption {
     position: absolute;
     width: 1px;
@@ -298,8 +220,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     white-space: nowrap;
   }
 
-  /* Fixed and above the tile layer, so the caption of whichever cover is
-     centred reads over the rail rather than scrolling away beneath it. */
+  /* Caption stays fixed over the rail. */
   .rail--live .rail__meta {
     display: flex;
     position: fixed;
@@ -311,28 +232,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
   /* ------------------------------------------------------- meta entry */
 
   /*
-    The four info lines slide out from behind a hard edge, the same gesture
-    the frame's own <Reveal> lines use — the mask is the <p> and the text
-    inside it is the transformable layer.
-
-    Done here rather than with <Reveal> because `setMeta` writes textContent
-    on every project change: a mask nested inside the <p> would be wiped by
-    the first scroll. Hence the mask IS the <p>, and the `data-rail-*` hook
-    sits on the inner span where setMeta can safely overwrite it.
-
-    Each column travels away from the cover it belongs to — the left column
-    enters from the left, the right from the right — so the pair reads as one
-    pass opening outwards around the centre rather than as four lines
-    arriving from the same place.
-
-    This is a one-shot on load, keyed to `.rail--placed`, NOT to setMeta:
-    the lines are written again on every project change and re-animating them
-    each time would turn a caption into a slot machine.
+    The caption lines slide out on load: left column from the left, right
+    column from the right. Only once — not on every project change.
   */
   .rail--live .rail__line {
     overflow: hidden;
-    /* Clipping only along the travel axis; the block axis stays visible so
-       descenders are never shaved. */
     padding-block: 0.15em;
     margin-block: -0.15em;
   }
@@ -344,7 +248,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     will-change: transform;
   }
 
-  /* Mirrored so the far column opens the other way. */
+  /* Right column comes from the right. */
   .rail--live .rail__meta > :last-child .rail__line-in {
     --rail-meta-from: 110%;
   }
@@ -352,9 +256,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   .rail--live.rail--placed .rail__line-in {
     transform: translateX(0);
     opacity: 1;
-    /* Lands with the rail rather than after it, so the covers and their
-       caption arrive as one beat. The second line of each column trails the
-       first by a touch — the same stagger the frame sweeps with. */
+    /* Lands with the rail. */
     transition:
       transform 900ms cubic-bezier(0.16, 1.11, 0.3, 1) var(--rail-meta-delay, 500ms),
       opacity 500ms ease-out var(--rail-meta-delay, 500ms);
@@ -394,16 +296,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
     };
 
     /*
-      The loop is a modulo, not a clone-and-reset: every tile's position is
-      `distance from centre` wrapped into a span of `items × step`, so the
-      column repeats forever while scrolling stays entirely native.
-
-      The runway it scrolls through is finite — browsers render a document
-      this tall far more happily than a millionaire-pixel one — and the rail
-      walks back towards the middle of it while at rest. See `recentre`.
+      The loop is endless: each cover's position is its distance from the
+      centre, wrapped around. The page itself is a long but finite scroll area,
+      and the rail quietly moves back to its middle when at rest (see recentre).
     */
     const RUNWAY = 100_000;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     let items: HTMLElement[] = [];
     let anchor = 0;
@@ -422,26 +319,18 @@ const pad = (n: number) => String(n).padStart(2, '0');
     let active = -1;
 
     /*
-      Every tile is a different size now, so the distance between two of them
-      depends on both — there is no single pitch to multiply by. `ladder` is
-      the running total of (tile height + gap) sampled every RUNG slots: look
-      a slot distance up in it and you get the pixel offset that leaves
-      exactly one gap between every tile along the way. `reachSlots` is where
-      that total runs off the bottom of the screen.
+      Covers differ in size, so spacing is looked up in `ladder`: the running
+      total of (cover height + gap) from the centre outwards.
     */
-    // Fine enough that the trapezoids below still track a steep swell. At 0.05
-    // the sampled height changed too much between rungs, the integral came out
-    // short, and covers overlapped by a dozen px mid-scroll.
+    // Small enough steps that covers never overlap.
     const RUNG = 0.005;
     let ladder: number[] = [0];
     let reachSlots = 0;
 
-    // Frame loop: awake while anything is moving, asleep otherwise, so an
-    // untouched page is not recalculating styles sixty times a second.
+    // The frame loop only runs while something is moving.
     let running = false;
     let idleFrames = 0;
-    // True while a settle-glide is in flight, so coming to rest at the end of
-    // it does not start another one.
+    // True during a snap, so landing doesn't trigger another one.
     let snapping = false;
     let lastY = NaN;
 
@@ -454,39 +343,10 @@ const pad = (n: number) => String(n).padStart(2, '0');
     jump(anchor);
     render();
 
-    // Every tile now carries a real transform, so the list can be shown. Until
-    // this point they were all stacked at 50%/50% and revealing them would
-    // flash a single centred cover.
+    // Placed — safe to show.
     root.classList.add('rail--placed');
 
-    /**
-     * Entry animation: the covers fade up while the counter races through the
-     * project numbers and lands on the first one.
-     *
-     * It reads as the rail finding its position rather than as something
-     * sliding in, which is the same voice as the rest of the site — a counter
-     * spinning up is a machine reporting state, not decoration.
-     *
-     * The counter is driven off a clock rather than a per-frame increment so
-     * the spin lasts the same time whatever the refresh rate, and it always
-     * lands on the real value `setMeta` would have written anyway.
-     */
-    /**
-     * Rebuilds the spacing table from the CURRENT swell values.
-     *
-     * Climb until the running total leaves the screen; past that a tile cannot
-     * be seen however large the rail gets.
-     *
-     * The integrand is the height at the MIDPOINT between consecutive slots,
-     * not at the slot itself. Two tiles one slot apart need half of each
-     * between their centres, and over a whole slot that averages to the height
-     * mid-way — sampling at the slot instead over-counts the big centre tile
-     * and under-counts its smaller neighbour, which is what let covers overlap
-     * once the swell got steep.
-     *
-     * Split out of `measure()` so it can be rebuilt whenever the swell values
-     * change.
-     */
+    /** Builds the spacing table out to the edge of the screen. */
     function buildLadder() {
       ladder = [0];
       let rise = 0;
@@ -499,10 +359,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       reachSlots = slot;
     }
 
-    /**
-     * Derives every pixel in the rail from the tile's own laid-out size, so
-     * the CSS custom properties stay the single source of truth.
-     */
+    /** Reads the settings from CSS and sizes everything from the cover size. */
     function measure() {
       const style = getComputedStyle(root);
       const num = (name: string, fallback: number) => {
@@ -515,7 +372,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
       thumbMin = num('--rail-thumb-min', 0.16);
       fadeStep = num('--rail-fade', 0.12);
       fadeMin = num('--rail-fade-min', 0.4);
-      glideMs = reduced.matches ? 0 : num('--rail-glide', 700);
+      // Kept under reduced motion — the rail always uses Lenis (see Frame.astro).
+      glideMs = num('--rail-glide', 700);
 
       activeH = originals[0].offsetHeight;
       gapPx = activeH * num('--rail-gap', 0.03);
@@ -523,26 +381,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
       halfView = window.innerHeight / 2;
       cullAt = halfView + activeH;
 
-      // Scroll distance per project is a feel decision, not a consequence of
-      // how big the thumbnails happen to be — so it is measured against the
-      // viewport, and the tile sizes below cannot change the gearing.
+      // Scroll distance per project, as a share of the screen height.
       step = Math.max(1, window.innerHeight * num('--rail-step', 0.34));
 
-      /*
-        Climb until the running total leaves the screen; past that a tile
-        cannot be seen however large the rail gets.
-
-        The integrand is the height at the MIDPOINT between consecutive slots,
-        not at the slot itself. Two tiles one slot apart need half of each
-        between their centres, and over a whole slot that averages to the
-        height mid-way — sampling at the slot instead over-counts the big
-        centre tile and under-counts its smaller neighbour, which is what let
-        covers overlap once the swell got steep.
-      */
       buildLadder();
 
-      // Enough tiles to fill that reach both ways, so the wrap never exposes
-      // an empty edge and no tile is asked to appear twice at once.
+      // Enough copies to fill the screen both ways.
       const copies = Math.max(1, Math.ceil((Math.ceil(reachSlots) * 2 + 2) / count));
       if (items.length !== count * copies) clone(copies);
 
@@ -550,7 +394,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       anchor = Math.round(RUNWAY / 2 / loop) * loop;
     }
 
-    /** Repeats the authored tiles until the rail fills the viewport. */
+    /** Copies the covers until they fill the screen. */
     function clone(copies: number) {
       for (const el of list.querySelectorAll('[data-rail-clone]')) el.remove();
 
@@ -567,7 +411,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       items = Array.from(list.querySelectorAll<HTMLElement>('[data-rail-item]'));
     }
 
-    /** Signed scroll distance from the centre to tile `i`, wrapped into the loop. */
+    /** Distance from the centre to cover `i`, wrapped around the loop. */
     function distance(i: number, offset: number) {
       const raw = i * step - offset;
       return (((raw + loop / 2) % loop) + loop) % loop - loop / 2;
@@ -584,35 +428,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
         const h = tileHeight(away);
 
         /*
-          The cursor has to match what a click will actually do — the click
-          handler below only lets the CENTRED tile follow its href, and
-          centres any other one instead.
-
-          Same threshold as that handler (half a step), so the cursor can
-          never disagree with the behaviour.
-
-          The two signals say different things and are set together:
-
-            label   the action this click performs — "Focus" brings the tile
-                    up, "Work" opens the page. Naming it is what makes the
-                    rail's one non-obvious rule legible: that an off-centre
-                    cover is a target to reach, not a link to follow.
-            mute    that this is a step on the way rather than the
-                    destination.
-
-          ABOVE THE CULL, deliberately. A tile that is off-screen still gets
-          its label, so it is already correct the moment it scrolls back in.
-          Below the cull it would keep whatever it was last given — and a tile
-          that had never been rendered at all would still carry the markup's
-          "Work", flashing the un-muted face when the pointer first met it
-          near the edge.
-
-          Written only on change, so a rail drifting past a stationary pointer
-          does not rewrite the same two attributes every frame — each write
-          would wake the cursor's MutationObserver.
+          Cursor label for each cover: "Work" in the centre (opens /work), "Next"
+          below and "Previous" above (click brings it to the centre, muted).
+          Only written when it changes.
         */
         const centred = away < 0.5;
-        const label = centred ? 'Work' : 'Focus';
+        const label = centred ? 'Work' : s > 0 ? 'Next' : 'Previous';
         const link = el.firstElementChild as HTMLElement;
 
         if (link.getAttribute('data-cursor') !== label) {
@@ -620,8 +441,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
           link.toggleAttribute('data-cursor-mute', !centred);
         }
 
-        // Cull against the tile's own height rather than the active tile's,
-        // or the small far ones stay alive well below the fold.
+        // Skip covers that are off screen.
         if (Math.abs(y) - h / 2 > halfView) {
           if (el.style.visibility !== 'hidden') el.style.visibility = 'hidden';
           continue;
@@ -645,39 +465,20 @@ const pad = (n: number) => String(n).padStart(2, '0');
     }
 
     /**
-     * Height in px of a tile `away` slots from the centre.
-     *
-     * One smooth decay all the way out, with no special case for the first
-     * neighbour: a tile grows continuously as it approaches the middle and
-     * peaks only when it is exactly there. The previous curve deliberately
-     * flattened past ±1 so the centre tile would stand alone, which is the
-     * opposite of a gradual swell.
+     * Cover height in px, `away` steps from the centre. Largest in the middle,
+     * shrinking smoothly outwards.
      */
     function tileHeight(away: number) {
       const falloff = 1 / (1 + Math.pow(away * spread, curve));
       return activeH * (thumbMin + (1 - thumbMin) * falloff);
     }
 
-    /**
-     * Screen offset in px for a tile `s` slots from the centre.
-     *
-     * The ladder is a running total from slot 0 outwards, so reading it as
-     * `±rise` only spaces things correctly when a cover is sitting exactly at
-     * the centre. Half way between two, both got pushed a full half-gap away
-     * from the middle: a 105px hole opened up between them while the small
-     * ones behind overlapped by 16px.
-     *
-     * Reading it as a continuous curve instead fixes that. `climb` is defined
-     * for negative s too (odd, so it mirrors), and the offset of a tile is
-     * simply its own climb — no reflection around the centre, so the spacing
-     * between any two neighbours is the integral between them wherever the
-     * rail happens to be resting.
-     */
+    /** Vertical position in px of a cover `s` steps from the centre. */
     function offsetAt(s: number) {
       return climb(s) + clearPx * Math.sign(s) * shove(Math.abs(s));
     }
 
-    /** The ladder read as an odd function, so it is smooth through zero. */
+    /** Looks up the ladder; mirrored for negative `s`. */
     function climb(s: number) {
       const away = Math.abs(s);
       const rung = Math.min(ladder.length - 2, Math.floor(away / RUNG));
@@ -686,17 +487,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
       return Math.sign(s) * rise;
     }
 
-    /** Eases the meta clearance in, so it does not pop as a tile takes centre. */
+    /** Eases the caption gap in as a cover reaches the centre. */
     function shove(away: number) {
       const x = Math.min(1, away);
       return x * x * (3 - 2 * x);
     }
 
-    /**
-     * Eases out of whatever the scroll was already doing rather than out of
-     * rest. A click can land while the page still carries speed; an ease-in-out
-     * would brake it to a stop and start again, which reads as a stutter.
-     */
+    /** Ease-out, so a click mid-scroll doesn't brake and restart. */
     function ease(t: number) {
       return 1 - Math.pow(1 - t, 3);
     }
@@ -714,17 +511,14 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
     // ------------------------------------------------------------- motion
 
-    // Lenis (wired up globally in Frame.astro) owns the scroll, so
-    // programmatic moves go through it rather than window.scrollTo. The rail
-    // reads window.scrollY either way, and Lenis cancels its own scrollTo the
-    // moment the user touches the wheel.
+    // All scrolling goes through Lenis (set up in Frame.astro).
 
-    /** Puts the page at `top` with no animation, keeping Lenis in sync. */
+    /** Jump to `top` instantly. */
     function jump(top: number) {
       window.lenisInstance?.scrollTo(top, { immediate: true, force: true });
     }
 
-    /** Moves the page to `top` over `ms`, through Lenis. */
+    /** Glide to `top` over `ms`. */
     function glide(top: number, ms: number) {
       if (ms <= 0) jump(top);
       else window.lenisInstance?.scrollTo(top, { duration: ms / 1000, easing: ease });
@@ -733,10 +527,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
     }
 
     /**
-     * The runway has ends, so walk back towards its middle once the rail has
-     * come to rest. Shifting by a whole number of loop lengths is invisible —
-     * every tile lands on precisely the pixel it already occupied — and doing
-     * it at rest means no momentum is ever cut short.
+     * At rest, jump back towards the middle of the scroll area. It moves by
+     * whole loops, so nothing visibly changes.
      */
     function recentre() {
       const drift = window.scrollY - anchor;
@@ -758,17 +550,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
       idleFrames = y === lastY ? idleFrames + 1 : 0;
       lastY = y;
 
-      // A dozen still frames is comfortably past the end of any momentum.
+      // 12 still frames = scrolling has stopped.
       if (idleFrames > 12) {
         running = false;
 
-        // Settling the rail on a whole project is what makes it read as a
-        // rail rather than a free scroll — it leaves the layout back in the
-        // state it started in, with one cover square in the middle.
-        //
-        // `snapping` guards the obvious trap: the glide below scrolls the
-        // page, which wakes this loop, which comes to rest again and would
-        // otherwise snap forever. It clears once the glide has landed.
+        // Snap to the nearest project. `snapping` stops the snap from triggering
+        // another snap when it lands.
         if (!snapping && snap()) return;
 
         snapping = false;
@@ -779,14 +566,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       requestAnimationFrame(frame);
     }
 
-    /**
-     * Glides to whichever project is nearest the middle, if it is not already
-     * there. Returns whether a move was started.
-     *
-     * The threshold is deliberately small: a rail resting a pixel or two off
-     * centre is invisible, and snapping it would only cost a frame of motion
-     * for no visible gain.
-     */
+    /** Glide to the nearest project. Returns true if it moved. */
     function snap() {
       const offset = window.scrollY - anchor;
       const nearest = Math.round(offset / step);
@@ -795,24 +575,17 @@ const pad = (n: number) => String(n).padStart(2, '0');
       if (Math.abs(drift) < 1) return false;
 
       snapping = true;
-      // Always a short hop — the furthest it can ever travel is half a slot,
-      // so the easing curve a click uses would feel sluggish here.
-      // glideMs is 0 under reduced-motion, and glide() turns that into a jump.
+      // Short hop, so a quick glide.
       glide(window.scrollY + drift, glideMs === 0 ? 0 : Math.min(glideMs, 420));
       return true;
     }
 
-    /**
-     * Scrolls the shortest way round the loop to put tile `i` in the middle.
-     * Nothing calls this from scrolling any more — only a click or a tab lands
-     * a cover dead centre, and the rail is otherwise free.
-     */
+    /** Scroll the shortest way to bring cover `i` to the centre (click or tab). */
     function centre(i: number) {
       const drift = distance(i, window.scrollY - anchor);
       if (drift === 0) return;
 
-      // Longer trips take longer, but not linearly — three slots away should
-      // not feel three times as far.
+      // Longer trips take a bit longer, but not proportionally.
       const slots = Math.abs(drift) / step;
       glide(window.scrollY + drift, glideMs * Math.min(2, 0.7 + Math.sqrt(slots) * 0.5));
     }
@@ -821,9 +594,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
     window.addEventListener('scroll', wake, { passive: true });
 
-    // Touching the page mid-settle hands control straight back: Lenis cancels
-    // its own scrollTo on wheel/touch, and clearing the guard means the rail
-    // will settle again once this new gesture runs out.
+    // Any new scroll cancels a snap in progress.
     for (const type of ['wheel', 'touchstart', 'keydown'] as const) {
       window.addEventListener(type, () => { snapping = false; }, { passive: true });
     }
@@ -835,8 +606,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
       render();
     });
 
-    // Clicking a small off-centre cover means "bring that one up", not "open
-    // it" — only the cover at full size navigates.
+    // Clicking an off-centre cover brings it to the centre; only the centred one
+    // opens.
     list.addEventListener('click', (event) => {
       const item = (event.target as HTMLElement).closest<HTMLElement>('[data-rail-item]');
       if (!item) return;
@@ -850,7 +621,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       centre(i);
     });
 
-    // Tabbing through the authored links pulls each one to the middle.
+    // Tabbing through the links centres each one.
     list.addEventListener('focusin', (event) => {
       const item = (event.target as HTMLElement).closest<HTMLElement>('[data-rail-item]');
       if (!item) return;
@@ -862,7 +633,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 </script>
 
 <style is:global>
-  /* The runway is a scroll surface, not something to look at. */
+  /* Hide the scrollbar on the homepage. */
   html.rail-host {
     scrollbar-width: none;
   }

@@ -5,29 +5,19 @@ import { Image } from 'astro:assets';
 import Reveal from './Reveal.astro';
 import type { Frame } from '../lib/work';
 
-/**
- * One project block on /work.
- *
- * The four blocks were copy-pasted markup, which meant every responsive tweak
- * had to be made four times and the copies had already drifted apart. This is
- * that same block, authored once — the page now only says which project goes
- * where.
- *
- * Widths and grid placement stay the page's business; this component never
- * sets its own column.
- */
+/** One project block on /work. The page decides its width and column. */
 interface Props {
-  /** Position in the series, rendered as `00-N/`. */
+  /** Shown as `00-N/`. */
   index: number;
   name: string;
-  /** Discipline line, right-aligned against the title. */
+  /** E.g. "Design & Development". */
   category?: string;
-  /** Live site. Omitted while a project has nothing public to point at. */
+  /** Live site, if there is one. */
   liveUrl?: string;
-  /** The mockup. Without one the box stays plain ink. */
+  /** The mockup. Without one the box stays dark. */
   cover?: ImageMetadata;
   coverAlt?: string;
-  /** Screens of the site, cycled in a floating frame on hover. */
+  /** Site screenshots, cycled on hover. */
   frames?: Frame[];
   class?: string;
 }
@@ -43,30 +33,17 @@ const {
   class: className = '',
 } = Astro.props;
 
-/* The box is a third of the page from md, full width below. */
+/* A third of the page on desktop, full width on phones. */
 const SIZES = '(min-width: 768px) 33vw, 100vw';
 
 /*
-  There is no per-project page yet, so the block links nowhere.
-
-  "Learn more" still reads as the block's invitation, because that is what it
-  will be. What changes is that it is not an <a>: a dead link is focusable,
-  looks clickable and promises a page that is not there. It is a <span>, and
-  the custom cursor is what tells you why — `data-cursor="Preview soon"` opens the
-  label on hover, so the page does not have to carry the caveat in its own
-  layout.
-
-  `data-cursor-mute` picks the cursor's quiet face: this is a note about why
-  nothing happens, not a button.
-
-  When the project pages land: make it an <a href>, and change the cursor
-  label from "Preview soon" to "Read".
+  No project pages yet, so "Learn more" is a <span>, not a dead link. The
+  cursor says "Preview soon" instead. When the pages exist, make it an <a>
+  and change the label to "Read".
 */
 ---
 
-{/* `data-project` is the entry unit: the script below wipes the image in and
-    lands the text as it finishes, so both are keyed off this one element
-    crossing the viewport. */}
+{/* The whole block animates in when it scrolls into view (script below). */}
 <div class={`flex flex-col gap-3 ${className}`} data-project>
   <div class="flex flex-col">
     <div>
@@ -74,8 +51,7 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
         <Reveal swap>00-{index}/</Reveal>
       </span>
     </div>
-    {/* Title and discipline stack on a phone — side by side they force the
-        name to wrap at almost every project length. */}
+    {/* Title and role stack on smaller screens. */}
     <div class="flex flex-col xl:flex-row xl:items-end xl:justify-between">
       <div class="flex items-center gap-2 -ml-0.5">
         <X size={15} stroke-width={3} class="project__mark shrink-0"/>
@@ -91,12 +67,10 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
     </div>
   </div>
 
-  {/* The cover carries the same label as the invitation below it: the whole
-      block is the thing that is coming, not just the line of text.
-
-      The mockup sits in an oversized layer so the scroll drift has room to
-      move without showing an edge. On hover it blurs and darkens, and the
-      site's own screens cycle in a frame floating above it. */}
+  {/*
+    The mockup drifts on scroll inside a slightly taller layer. On hover it
+    blurs and the site screenshots play over it (paused for now).
+  */}
   <div
     class="project__media relative block overflow-hidden bg-ink aspect-4/3"
     data-cursor="Preview soon"
@@ -105,12 +79,15 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
   >
     {cover && (
       <div class="gallery__drift absolute inset-x-0 inset-y-[-8%]" data-drift>
+        {/* The first row loads right away; the rest lazy-load. */}
         <Image
           class="gallery__cover size-full object-cover"
           src={cover}
           alt={coverAlt}
-          widths={[800, 1200, 1600, 2000]}
+          widths={[800, 1200, 1600]}
           sizes={SIZES}
+          loading={index <= 2 ? 'eager' : 'lazy'}
+          fetchpriority={index <= 2 ? 'high' : 'auto'}
         />
       </div>
     )}
@@ -143,21 +120,8 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
       <span></span>
     )}
 
-    {/* A <span>, not an <a> — see the note above. The arrow stays so the block
-        keeps its shape, but nothing here is focusable or clickable, and the
-        cursor is what explains that. */}
     <span class="flex items-center gap-1 w-fit shrink-0" data-cursor="Preview soon" data-cursor-mute>
-      {/* `project__go` on the label too, so it fades and nudges in with the
-          arrow beside it as one unit — brackets included, which is why the
-          whole span carries it rather than the <Reveal> inside.
-
-          `data-no-entry` still keeps the Reveal's own per-line SLIDE off: the
-          label must not travel out from behind a mask while the brackets
-          around it stay put.
-
-          No `swap` while it is pending: the swap is a hover gesture, and
-          hovering something that does not respond is a worse promise than a
-          label that sits still. The cursor does the responding instead. */}
+      {/* Fades in with the arrow. No hover roll while it leads nowhere. */}
       <span class="project__go text-ink-50 text-[10px] font-semibold uppercase font-mono tracking-widest md:text-xs">
         <span class="text-ink-20">[</span> <span data-no-entry><Reveal>Learn more</Reveal></span> <span class="text-ink-20">]</span>
       </span>
@@ -168,22 +132,10 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
 
 <style>
   /*
-    Entry: the image wipes in from the left, and each text line lands as it
-    finishes — the same left-to-right gesture the frame sweeps with, so the
-    page reads as one continuation of the load rather than a second idea.
-
-    The image is revealed with `clip-path`, not a transform: the block stays
-    exactly where it is laid out and the edge travels across it. A translate
-    would slide the whole box and collide with the grid.
-
-    Text uses <Reveal swap>'s two-face stack, held on the duplicate and
-    released to the real line, so the words arrive by swapping rather than by
-    sliding in from nowhere. Both are driven by `.is-in`, added once when the
-    block enters the viewport.
+    Entry: the image wipes in from the left and the text lines slide in as
+    it finishes. Everything keys off `.is-in`.
   */
-  /* Guarded by `html.js` for the same reason as the text: a page whose module
-     never loads must show its images, not hide them behind a wipe that will
-     never be released. */
+  /* Only with JS, so images still show if scripts fail. */
   :global(html.js) .project__media {
     clip-path: inset(0 100% 0 0);
     transition: clip-path 900ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -194,11 +146,8 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
   }
 
   /*
-    Under the wipe the mockup comes into focus: it starts blurred and a
-    touch large, and sharpens and settles a little behind the travelling
-    edge, so the picture is still resolving as the wipe finishes. On the
-    drift layer rather than the <img>, so it never fights the hover filter,
-    and via `scale` so it never fights the drift's transform.
+    The mockup starts blurred and slightly zoomed, and sharpens as the wipe
+    crosses. It's on the drift layer so it doesn't clash with the hover blur.
   */
   :global(html.js) .gallery__drift {
     filter: blur(18px);
@@ -214,14 +163,9 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
   }
 
   /*
-    Gallery. The mockup's layer is 16% taller than the box; the script drifts
-    it through that slack as the box crosses the viewport (`--drift`, -1 to
-    1), so the picture moves a little slower than the page around it.
-
-    `.is-playing` is the hover (or, on touch, the box sitting mid-screen):
-    the mockup blurs and darkens into a backdrop and the frame rises over it.
-    Global selectors because <Image> renders its own <img> without this
-    file's scope id.
+    Gallery. The mockup layer is 16% taller than the box and drifts with
+    scroll (`--drift`, -1 to 1). `.is-playing` blurs it and shows the frame.
+    Global selectors because <Image> renders its own <img>.
   */
   .gallery__drift {
     transform: translate3d(0, calc(var(--drift, 0) * -7%), 0);
@@ -255,9 +199,8 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
   }
 
   /*
-    Stacked; the script marks whichever is current. A short crossfade: the
-    incoming shot fades in on top while the outgoing one holds underneath,
-    then drops once it is covered — so the frame never dips to the backdrop.
+    Screenshots are stacked. The new one fades in on top, the old one
+    drops after it, so the frame never flashes empty.
   */
   .project__media :global(.gallery__shot) {
     position: absolute;
@@ -276,43 +219,7 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
     transition: opacity 220ms ease-out;
   }
 
-  /*
-    The text is held swapped until the wipe is most of the way across, so the
-    lines land WITH the image rather than racing it. Each line trails the one
-    above by a touch — the frame's own stagger, kept small so the block still
-    reads as a single arrival.
-  */
-  /*
-    Global because `.reveal__swap` carries Reveal's scope id, not this file's.
-
-    Scoped to the HELD state so it only times the entry. Applied
-    unconditionally it would also slow every hover for the rest of the
-    session — the same element drives both, and hover wants Reveal's own
-    snappier 420ms.
-  */
-  /*
-    Entry moves `.reveal__inner`, NOT `.reveal__swap`.
-
-    The swap layer holds two copies of the same words, so animating it on load
-    showed the line already sitting there and then cycling to an identical
-    line — it read as text changing, not text arriving. `.reveal__inner` is
-    the layer above it, which Reveal reserves for exactly this: sliding the
-    whole line out from behind the mask, so the words appear from nothing.
-
-    That also leaves `.reveal__swap` free for its real job — the hover swap on
-    the title and "Live website" — with the two never touching each other.
-  */
-  /*
-    The X leads the title it sits against, so it turns in just ahead of it.
-
-    A rotate rather than a slide: the mark is two crossed strokes, so spinning
-    it a quarter turn into place reads as the mark drawing itself, and it does
-    not need a mask to hide behind — there is nothing to clip it against.
-    Scale rides along so it arrives rather than merely pivots.
-
-    Global because lucide renders the <svg> from its own component, which never
-    carries this file's scope id.
-  */
+  /* The X spins into place just before the title. */
   :global(html.js .project__mark) {
     opacity: 0;
     transform: rotate(-90deg) scale(0.4);
@@ -321,17 +228,13 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
   :global(html.js [data-project].is-in .project__mark) {
     opacity: 1;
     transform: rotate(0deg) scale(1);
-    /* 300ms — a beat ahead of the first text line at 380ms. */
+    /* Just ahead of the first text line. */
     transition:
       opacity 400ms ease-out 300ms,
       transform 700ms cubic-bezier(0.16, 1.11, 0.3, 1) 300ms;
   }
 
-  /*
-    The "Learn more" arrow closes the block, so it comes in last and nudges
-    along its own axis — the direction it points, the same idea as the
-    masthead's down-right arrow.
-  */
+  /* "Learn more" comes in last. */
   :global(html.js .project__go) {
     opacity: 0;
     transform: translateX(-0.5em);
@@ -345,15 +248,7 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
       transform 700ms cubic-bezier(0.16, 1, 0.3, 1) 720ms;
   }
 
-  /*
-    `[data-no-entry]` opts a line out of the entry: it is present from the
-    start and only ever moves on hover, which lives on `.reveal__swap` and is
-    untouched by any of this.
-
-    Written as `:not(...) .reveal__inner` with `:has()` on the ancestor rather
-    than a child chain, so it does not depend on how deeply the <Reveal> is
-    wrapped.
-  */
+  /* Text lines slide in from the left; `[data-no-entry]` lines stay put. */
   :global(html.js [data-project] .reveal:not([data-no-entry] *) .reveal__inner) {
     transform: translateX(-105%);
   }
@@ -365,8 +260,7 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
       var(--project-line-delay, 0ms);
   }
 
-  /* Belt and braces: `html.js` is never set under reduced motion, so none of
-     the holds above apply — these only guarantee it. */
+  /* Just in case — `html.js` is never set under reduced motion anyway. */
   @media (prefers-reduced-motion: reduce) {
     .project__media {
       clip-path: none;
@@ -389,20 +283,8 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
   }
 </style>
 
-{/* `html.js` — the flag every held entry state keys off — is set in
-    BaseLayout, before first paint and once per page rather than once per
-    project. */}
-
 <script>
-  /*
-    One observer for every project on the page. Each block reveals as it
-    crosses into view and is then unobserved — this is an entry animation, not
-    a scroll effect, so it must never replay when the user scrolls back up.
-
-    The held state itself lives in CSS (see `html.js` above): by the time this
-    module runs the page has already painted, so holding the lines from here
-    would show them in their final position for a frame first.
-  */
+  /* Reveal each block once as it scrolls into view (never again on scroll up). */
   const blocks = Array.from(document.querySelectorAll<HTMLElement>('[data-project]'));
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -415,14 +297,7 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
           const block = entry.target as HTMLElement;
           observer.unobserve(block);
 
-          // Delays MUST be set before `.is-in`: the class is what starts the
-          // transition, and a delay written afterwards arrives too late to
-          // apply to the move already in flight — every line would land at
-          // once. Staggering them is what makes the words follow the wipe
-          // rather than race it.
-          // Opted-out lines are filtered here too, not just in CSS: leaving
-          // them in the list would consume a stagger slot and push every line
-          // after them later by 70ms.
+          // Set the stagger before adding `.is-in`, or all lines land at once.
           const lines = Array.from(
             block.querySelectorAll<HTMLElement>('[data-reveal]'),
           ).filter((line) => !line.closest('[data-no-entry]'));
@@ -434,8 +309,7 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
           block.classList.add('is-in');
         }
       },
-      // Fires once a little of the block is showing, so it is already moving
-      // by the time it is properly on screen.
+      // Start when a bit of the block is visible.
       { rootMargin: '0px 0px -12% 0px', threshold: 0.15 },
     );
 
@@ -445,17 +319,14 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
 
 <script>
   /*
-    Gallery behaviour, in two parts that never touch each other:
+    Two parts:
 
-    Drift — every mockup on screen gets `--drift` from -1 (box entering at
-    the bottom) to 1 (leaving at the top). One scroll listener batched into a
-    frame; boxes off screen are skipped via an observer. Lenis scrolls the
-    real window, so the native scroll event is enough.
+    Drift — each mockup gets `--drift` from -1 (entering at the bottom) to
+    1 (leaving at the top) as you scroll.
 
-    Play — while a box is hovered (or, without hover, sits mid-screen) its
-    frames cycle, each one crossfading quickly over the last. Images hold for HOLD ms; a video holds for
-    its own length. Leaving stops the cycle, and the next visit starts from
-    the first frame again, so it always opens on the homepage.
+    Play — on hover (or mid-screen on touch) the screenshots crossfade one
+    after another. Images stay HOLD ms; videos play to the end. Each visit
+    starts from the first screenshot.
   */
   const HOLD = 1400;
 
@@ -506,9 +377,7 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
       let timer = 0;
       let playing = false;
 
-      // Stopping leaves the last shot showing, so it fades out with the
-      // frame instead of vanishing ahead of it; the next start fades the
-      // first shot in over it.
+      // Leave the last shot up so it fades out with the frame.
       const stop = () => {
         window.clearTimeout(timer);
         for (const shot of shots) {
@@ -558,8 +427,7 @@ const SIZES = '(min-width: 768px) 33vw, 100vw';
         box.addEventListener('pointerleave', () => play(false));
       }
     } else {
-      // Touch: a thin band across the middle of the screen stands in for
-      // the pointer, so the box plays while it is the thing being looked at.
+      // Touch: play while the box is in the middle of the screen.
       const players = new Map(galleries.map((box) => [box, player(box)]));
       const middle = new IntersectionObserver(
         (entries) => {

@@ -1,54 +1,38 @@
 @import 'tailwindcss';
 
-/* Your design tokens go here — colours, fonts, type scale, spacing.
-   https://tailwindcss.com/docs/theme */
-
 @theme {
   --font-sans: var(--font-satoshi);
-  
-  /*
-    Warm paper and warm ink, not #fff/#000. Pure black on pure white shimmers
-    at the edges on most screens; a near-black carrying the same warmth as the
-    paper makes the two read as one material.
 
-    Orange is a STATE colour, not a decorative one — status dots, link hover,
-    the active nav item, index numbers. It stops feeling precise the moment it
-    appears on more than a handful of elements.
+  /*
+    Warm paper and ink instead of pure white/black, which shimmer on screens.
+    Signal is only for state: status dot, link hover, active nav, index numbers.
   */
   --color-paper: #f4f2ec;
   --color-ink: #14130f;
-  /* --color-signal: #ff4a17; */
   --color-signal: #2D4BFF;
 
-  /* Ink at fixed strengths, so opacity does not have to be guessed per use.
-     These are pre-mixed against paper rather than alpha, so text over the
-     grain overlay stays the colour it claims to be. */
+  /*
+    Ink mixed with paper at fixed strengths (not transparency), so text stays
+    the same colour over the grain.
+  */
   --color-ink-70: color-mix(in oklab, var(--color-ink) 70%, var(--color-paper));
   --color-ink-50: color-mix(in oklab, var(--color-ink) 50%, var(--color-paper));
   --color-ink-20: color-mix(in oklab, var(--color-ink) 20%, var(--color-paper));
 
-  /* The rail inherits the same palette. */
+  /* Rail colours. */
   --color-rail-bg: var(--color-paper);
   --color-rail-ink: var(--color-ink);
   --color-rail-dim: var(--color-ink-50);
 
-
   /*
-    The homepage rail's geometry and feel. These are read back at runtime by
-    WorkRail.astro via getComputedStyle, so they are not styling that happens
-    to live in CSS — they are the numbers the scroll engine runs on, and the
-    unitless ones must stay unitless.
+    Homepage rail settings. WorkRail reads these in JS, so keep the unitless
+    ones unitless.
 
-    Covers swell continuously towards the middle and peak only dead centre.
-    Two numbers shape that curve:
-
-      spread  how quickly size falls away. Higher = only the middle cover is
-              big; lower = the swell is broad and gentle.
-      curve   how flat the peak is. ~1 is a soft mound with no clear winner,
-              ~3 holds tiles near full size then drops off sharply.
-
-    thumb-min is the floor the far ones flatten out at, gap is the space
-    between any two, and step is how far you scroll per project (in vh).
+      spread     how fast covers shrink away from the centre
+      curve      how flat the top of the swell is
+      thumb-min  smallest cover size
+      gap        space between covers
+      step       scroll distance per project (share of screen height)
   */
   --rail-rw: 4;
   --rail-rh: 3;
@@ -63,25 +47,21 @@
   --rail-step: 0.34;
   --rail-glide: 700;
 
-  /* The size the rail grows from on load. 1 disables the entry scale. */
+  /* Size the rail grows from on load (1 = no grow). */
   --rail-zoom: 0.82;
 
   --rail-fade: 0.12;
   --rail-fade-min: 0.4;
 }
 
-/* Grain overlay effect.
-   The overlay is an ABSOLUTE, full-document layer that scrolls with the page —
-   NOT position:fixed. A fixed + will-change + mix-blend layer gets promoted to
-   its own compositor layer that mobile browsers refuse to re-rasterize during
-   scroll, so lower sections render blank until scrolling stops. Painting it as
-   part of the normal page flow makes it cover the whole document reliably. */
+/*
+  Film grain. It scrolls with the page instead of being fixed — fixed blend
+  layers render blank on some phones while scrolling.
+*/
 body {
   position: relative;
   overflow-x: clip;
-  /* Short pages (e.g. /about) otherwise leave body shorter than the viewport,
-     so the grain overlay below — sized to body's content height — ends before
-     the visible bottom of the screen, right where the fixed footer sits. */
+  /* So the grain reaches the bottom on short pages. */
   min-height: 100dvh;
 }
 
@@ -104,15 +84,14 @@ body {
 }
 
 .u-grain-animate {
-  /* step-end = hard cut to a new scattered position every frame (~16fps),
-     like real film grain — never a smooth diagonal slide. */
+  /* Jumps to a new spot each step, like real film grain. */
   animation: grain-animation 0.6s step-end infinite;
 }
 
-/* Animating a full-document mix-blend layer repaints the whole viewport every
-   frame — cheap enough on desktop, wasteful on phones. Keep the static grain
-   texture (which now renders everywhere) and drop only the flicker on small
-   screens and for reduced-motion users. */
+/*
+  Still grain on phones and under reduced motion — animating it costs too
+  much there.
+*/
 @media (max-width: 640px) {
   .u-grain-animate {
     animation: none;
@@ -125,8 +104,7 @@ body {
   }
 }
 
-/* Steady opacity (no per-frame flicker) and every frame is offset — no aligned
-   "0 0" landmark that pops once per loop. Just position scatter. */
+/* Random offsets so the loop has no visible repeat. */
 @keyframes grain-animation {
   0%   { background-position: -37px 21px; }
   10%  { background-position: 22px -33px; }

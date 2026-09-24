@@ -7,6 +7,15 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   site: 'https://hosek.cc',
   integrations: [sitemap()],
+
+  // URLs without a trailing slash (/about). Pages build as about.html and
+  // Vercel's cleanUrls serves them at /about.
+  trailingSlash: 'never',
+  build: { format: 'file' },
+
+  // Load pages on link hover so navigation feels instant.
+  prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
+
   vite: {
     plugins: [tailwindcss()],
   },

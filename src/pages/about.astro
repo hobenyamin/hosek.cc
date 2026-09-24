@@ -6,19 +6,16 @@ import AboutIntro from '../components/AboutIntro.astro';
 import { ArrowDownRight, X } from '@lucide/astro';
 import { Image } from 'astro:assets';
 import pfp from '../assets/pfp.jpg';
+import { CONTACT } from '../consts';
 ---
 
-<BaseLayout title="About" description="Designer and frontend developer in Olomouc — background, approach and contact.">
-    
+<BaseLayout title="About" description="About Nikolas Hošek, a designer and frontend developer in Olomouc, Czechia — background, approach and contact.">
 
     <section id="about" class="relative z-10 px-4 md:px-6">
-        
-        {/* Desktop fits the whole page in one screen. A phone cannot, and
-            pretending otherwise just shrinks the type — so below md this
-            becomes an ordinary scrolling column with the fixed frame cleared
-            top and bottom. */}
+
+        {/* One screen on desktop; a normal scrolling column on phones. */}
         <div class="pt-24 pb-24 md:h-dvh md:pt-30 md:pb-30">
-            
+
             <div class="flex flex-col gap-14 md:grid md:h-full md:grid-cols-3 md:grid-rows-[auto_1fr] md:gap-x-10 md:gap-y-25">
                 <div>
                     <div class="@container flex gap-10">
@@ -31,12 +28,10 @@ import pfp from '../assets/pfp.jpg';
                     </div>
                 </div>
 
-                {/* One row on a phone, two separate grid cells from md — contents
-                    dissolves this wrapper so the desktop grid is untouched. */}
+                {/* One row on phones; `md:contents` makes it two grid cells on desktop. */}
                 <div class="flex justify-between gap-6 md:contents">
                     <div class="flex items-end">
-                    {/* Coordinates are the first thing to go — the city is the
-                        content, the decimals are texture. */}
+                    {/* Coordinates hide on small screens. */}
                     <span class="text-ink-50 text-[10px] font-semibold uppercase font-mono tracking-widest md:text-xs"><Reveal><span class="text-ink">Olomouc, CZ</span><span class="hidden sm:inline"> &mdash; 49.59&deg;N 17.25&deg;E</span></Reveal></span>
                 </div>
                 <div class="flex flex-col justify-end">
@@ -47,8 +42,7 @@ import pfp from '../assets/pfp.jpg';
                 </div>
 
                 <div class="flex flex-col justify-between gap-14 md:gap-0">
-                    {/* Stretches across the column on a phone, where five fixed
-                        blocks would sit as an odd stub. */}
+                    {/* Full width on phones. */}
                     <div class="flex items-end gap-px" aria-hidden="true" data-about-swatch>
                         <div class="h-10 flex-1 bg-ink-20 md:h-20 md:w-8 md:flex-none"></div>
                         <div class="h-10 flex-1 bg-ink-50 md:h-20 md:w-8 md:flex-none"></div>
@@ -97,10 +91,10 @@ import pfp from '../assets/pfp.jpg';
                             <span class="text-ink-50 italic text-xs font-semibold uppercase font-mono tracking-widest">Away from the screen I'm a classically trained pianist, which is probably where the sense of precision comes from. Otherwise out bouldering, hiking, over a chessboard, or somewhere new looking for good food.</span>
                             <span class="text-ink text-xl font-semibold leading-none tracking-wide">I'm open to frontend roles and taking on freelance projects from September 2026.</span>
                         </div>
-                    </div> 
+                    </div>
                 </div>
                 <div class="flex flex-col gap-15">
-                    
+
                     <div class="flex flex-col gap-5" data-about>
                         <div class="flex flex-col">
                             <div>
@@ -114,20 +108,10 @@ import pfp from '../assets/pfp.jpg';
                             </div>
                         </div>
                         <div class="flex flex-col gap-1">
-                            {/* Brackets stay put and only the label swaps, so
-                                the `[ ]` reads as a frame the text moves
-                                inside rather than sliding along with it. */}
-                            {/* A button, like the frame's address: clicking
-                                copies rather than opening a mail client.
-                                `aria-label` carries the verb, since the
-                                visible text is only the address and the
-                                cursor's label is aria-hidden. */}
-                            <button type="button" data-copy="hosek@weborio.cz" data-cursor="Copy" data-cursor-done="Copied" aria-label="Copy email address hosek@weborio.cz" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>hosek@weborio.cz</Reveal> <span class="text-ink">]</span></button>
-                            {/* A copy button too, matching the address above
-                                it: both pieces of contact information behave
-                                the same way rather than one copying and one
-                                handing off to the dialler. */}
-                            <button type="button" data-copy="+420605485485" data-cursor="Copy" data-cursor-done="Copied" aria-label="Copy phone number +420 605 485 485" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>+420 605 485 485</Reveal> <span class="text-ink">]</span></button>
+                            {/* Click copies (no mail app). Only the label rolls, the brackets stay. */}
+                            <button type="button" data-copy={CONTACT.email} data-cursor="Copy" data-cursor-done="Copied" aria-label={`Copy email address ${CONTACT.email}`} class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>{CONTACT.email}</Reveal> <span class="text-ink">]</span></button>
+
+                            <button type="button" data-copy={CONTACT.phoneRaw} data-cursor="Copy" data-cursor-done="Copied" aria-label={`Copy phone number ${CONTACT.phone}`} class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>{CONTACT.phone}</Reveal> <span class="text-ink">]</span></button>
                         </div>
                     </div>
                     <div class="flex flex-col gap-5" data-about>
@@ -143,16 +127,13 @@ import pfp from '../assets/pfp.jpg';
                             </div>
                         </div>
                         <div class="flex flex-col">
-                            {/* `target`/`rel` alongside the cursor's "Visit":
-                                the label says it leaves, so the link should
-                                actually leave rather than replacing the page. */}
+                            {/* Open in a new tab. */}
                             <a href="https://instagram.com/" target="_blank" rel="noreferrer" data-cursor="Visit" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>INSTAGRAM</Reveal> <span class="text-ink">]</span></a>
                             <a href="https://github.com/" target="_blank" rel="noreferrer" data-cursor="Visit" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>GITHUB</Reveal> <span class="text-ink">]</span></a>
                         </div>
                     </div>
 
-                    {/* Processed by Astro at build: served as webp at the two
-                        densities the 200px slot can actually use. */}
+                    {/* Optimised by Astro at 1x and 2x. */}
                     <Image
                         src={pfp}
                         alt="Nikolas Hošek"
@@ -165,6 +146,6 @@ import pfp from '../assets/pfp.jpg';
         </div>
     </section>
 
-    {/* Last in the page so it sees every section. */}
+    {/* Last, so it sees every section. */}
     <AboutIntro />
 </BaseLayout>

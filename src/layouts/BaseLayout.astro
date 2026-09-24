@@ -15,7 +15,7 @@ interface Props {
 
 const { title, description, image, type } = Astro.props;
 
-// Page titles read "Thing — Name"; the homepage passes no title.
+// "Work — Name". The homepage passes no title and gets the full site title.
 const pageTitle = title ? `${title} — ${SITE.name}` : SITE.title;
 ---
 
@@ -23,21 +23,13 @@ const pageTitle = title ? `${title} — ${SITE.name}` : SITE.title;
 <html lang={SITE.locale}>
   <head>
     <BaseHead title={pageTitle} description={description} image={image} type={type} />
-    <Font cssVariable='--font-satoshi'/>
+    {/* Preloaded — it's the only font, so all text waits on it. */}
+    <Font cssVariable='--font-satoshi' preload />
 
-    {/* Every entry animation holds its element in an offscreen state until it
-        is released. Those holds are gated on `html.js` so they exist only when
-        the scripts that release them will actually run: a page whose modules
-        fail still renders normally rather than staying blank.
-
-        IN <head>, not <body>. The stylesheet is in the head too, so a script
-        placed in the body can run after the browser has already painted a
-        frame — and that frame has no `html.js`, so every held element renders
-        fully visible before snapping out of sight. That was the flash of
-        content when navigating to /work and /about. The index page never
-        showed it because the rail hides itself in plain CSS, with no flag.
-
-        Reduced motion never sets it, which skips every entry at the source. */}
+    {/* Entry animations only hide things when `html.js` is set, so the page
+        still shows up if scripts fail. It has to be set here in <head>,
+        before the first paint, or content flashes in and then hides.
+        Not set under reduced motion, which turns every entry off. */}
     <script is:inline>
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
         document.documentElement.classList.add('js');
@@ -50,18 +42,15 @@ const pageTitle = title ? `${title} — ${SITE.name}` : SITE.title;
 
     <slot/>
 
-    {/* Sweeps every <Reveal> line in. Last in the body so it sees the whole
-        page, including the frame. */}
+    {/* Slides every <Reveal> line in. Last, so it sees the whole page. */}
     <RevealIntro />
 
-    {/* Global grain overlay — sits above ALL content, never interactive.
-        Rendered once here so no transformed ancestor can clip it. */}
+    {/* Film grain over everything. Lives here so nothing can clip it. */}
     <div class="g_overlay" aria-hidden="true">
       <div class="g_grain_overlay u-grain-animate"></div>
     </div>
 
-    {/* The custom cursor. Last in the body and above the grain (z-200 vs
-        z-100), so nothing is ever painted over it. */}
+    {/* Custom cursor, above the grain. */}
     <Cursor />
   </body>
 </html>

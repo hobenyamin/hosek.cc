@@ -6,21 +6,8 @@ import Reveal from '../../components/Reveal.astro';
 import { ArrowDownRight } from '@lucide/astro';
 import { getProjects } from '../../lib/work';
 
-/**
- * The staggered placement is the point of this page: projects sit in
- * different columns so the page reads as a composition rather than a grid of
- * equal tiles.
- *
- * That needs three tracks to stagger across, so the col-starts below only
- * apply from md up. Below md every project takes the full width and the empty
- * spacer cells collapse away.
- *
- * The projects themselves now come from the content collection — the same
- * source the homepage rail reads — so a project is written once, in one
- * markdown file, and shows up in both places with a case study behind it.
- * Only the column placement stays the page's own business: that is a
- * composition decision the content has no opinion about.
- */
+// Projects are staggered across three columns from md up, so the page
+// reads as a composition, not a grid. On phones it's a single column.
 const COLUMNS = ['md:col-start-1', 'md:col-start-2', 'md:col-start-2', 'md:col-start-3'];
 
 const PROJECTS = (await getProjects()).map((project, i) => ({
@@ -30,28 +17,25 @@ const PROJECTS = (await getProjects()).map((project, i) => ({
   liveUrl: project.data.url,
   cover: project.data.cover,
   coverAlt: project.data.coverAlt,
-  // Hover gallery is paused until the page screenshots are redone. To bring
-  // it back: import getFrames and pass `frames: getFrames(project.id)`.
-  // Cycles once there are more projects than planned columns, so a fifth
-  // project lands back in column 1 rather than losing its placement.
+  // Hover gallery is paused. To bring it back, import getFrames and pass
+  // `frames: getFrames(project.id)`.
+  // A fifth project wraps back to column 1.
   class: COLUMNS[i % COLUMNS.length],
 }));
 
 const total = PROJECTS.length;
 
-// Two to a row, so the stagger has somewhere to happen. Derived rather than
-// destructured: the count is whatever the collection holds now.
+// Two projects per row.
 const rows = Array.from({ length: Math.ceil(total / 2) }, (_, r) =>
   PROJECTS.slice(r * 2, r * 2 + 2),
 );
 ---
 
-<BaseLayout title="Work" description="Selected design and frontend projects.">
+<BaseLayout title="Work" description="Selected web design and frontend development projects by Nikolas Hošek, a designer and developer in Olomouc, Czechia.">
     <section id="work" class="relative z-10 px-4 md:px-6">
         <div class="pt-24 pb-24 md:pt-30 md:pb-30">
 
-            {/* Same rhythm as /about: one gap owns the distance from the
-                masthead to the content, at both widths. */}
+            {/* Same spacing as /about. */}
             <div class="flex flex-col gap-14 md:gap-y-25">
             <div class="flex flex-col gap-14 md:grid md:grid-cols-3 md:gap-x-10">
                 <div class="@container flex gap-10">
@@ -64,8 +48,7 @@ const rows = Array.from({ length: Math.ceil(total / 2) }, (_, r) =>
                 </div>
             </div>
 
-            {/* One row on a phone, two grid cells from md — contents dissolves
-                the wrapper so the desktop layout is untouched. */}
+            {/* One row on phones; `md:contents` makes it two grid cells on desktop. */}
             <div class="flex justify-between gap-6 md:contents">
                 <div class="flex items-end">
                     <span class="text-[10px] font-semibold uppercase font-mono tracking-widest md:text-xs"><Reveal><span class="text-ink-50">Selected projects &mdash;</span> 2026</Reveal></span>
@@ -78,10 +61,6 @@ const rows = Array.from({ length: Math.ceil(total / 2) }, (_, r) =>
                 </div>
             </div>
 
-            {/* Two per row on desktop so the stagger has somewhere to happen;
-                a single column on a phone. The outer gap above already sets
-                the distance from the masthead, so these rows only own the
-                space between themselves. */}
             {rows.map((row) => (
                 <div class="flex flex-col gap-14 md:grid md:grid-cols-3 md:gap-x-10">
                     {row.map((project) => <Project {...project} />)}

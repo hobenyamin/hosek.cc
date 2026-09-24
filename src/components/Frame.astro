@@ -1,24 +1,17 @@
 ---
 import Reveal from './Reveal.astro';
+import { CONTACT, NAV } from '../consts';
+import { publicPath } from '../lib/path';
 
-const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const path = publicPath(Astro.url.pathname);
 const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
-
-const NAV = [
-  { label: 'Index', href: '/' },
-  { label: 'Work', href: '/work' },
-  { label: 'About', href: '/about' },
-];
 ---
 
-{/* Header and footer share one 3-column grid so all four corners land on the
-    same two vertical lines as the page content below. */}
+{/* Header and footer use the same 3-column grid as the pages. */}
 <div class="frame pointer-events-none">
   <header class="fixed inset-x-0 top-0 z-50 grid grid-cols-2 gap-6 px-4 py-4 md:grid-cols-3 md:gap-10 md:px-6">
     <nav aria-label="Main">
-      {/* Below md the links collapse to this button, which opens the panel at
-          the end of the frame. The label swaps to "Close" while it is open —
-          two faces stacked, so the width never jumps mid-transition. */}
+      {/* On phones the links collapse into this button. Its label rolls to "Close" when open. */}
       <button
         type="button"
         class="pointer-events-auto block text-sm font-semibold transition-colors hover:text-ink md:hidden"
@@ -26,9 +19,6 @@ const NAV = [
         aria-controls="menu"
         data-menu-toggle
       >
-        {/* Wrapped in <Reveal> so it still joins the frame's load sweep; the
-            Menu/Close stack sits inside, on its own layer, exactly as the
-            hover swap does. */}
         <Reveal>
           <span class="menu-toggle__faces">
             <span class="menu-toggle__face">Menu</span>
@@ -41,12 +31,7 @@ const NAV = [
         {
           NAV.map(({ label, href }) => (
             <li>
-              {/* Reveal sits INSIDE the anchor: the link keeps its own hover,
-                  focus ring and hit area, and only the text slides. */}
-              {/* The cursor names the destination rather than the action:
-                  "Index", "Work", "About". It stays on the current page's own
-                  link too — the label is telling you where you are pointing,
-                  which is just as true when you are already there. */}
+              {/* The cursor shows where the link goes. */}
               <a
                 class="pointer-events-auto block text-sm font-semibold text-ink-50 transition-colors hover:text-ink aria-[current=page]:text-ink"
                 data-cursor={label}
@@ -61,51 +46,33 @@ const NAV = [
       </ul>
     </nav>
 
-    {/* Metadata, not navigation — dimmed so the nav is the only full-black thing up here. */}
+    {/* Dimmed so only the nav is full black. */}
     <div class="hidden flex-col md:flex">
       <Reveal class="text-sm font-semibold">Designer &amp; Developer</Reveal>
       <Reveal class="text-ink-50 text-sm font-semibold">Based in Czechia</Reveal>
     </div>
 
-    {/*
-      A copy button, not a mail link — clicking puts the address on the
-      clipboard rather than handing off to a mail client.
-
-      <button>, therefore, not <a>: it performs an action on this page and
-      goes nowhere, which is what a button is. As an <a href="mailto:"> it
-      would also offer "Open in new tab" and "Copy link address" in the
-      context menu, both of which are wrong for something that copies.
-
-      The visible label is the address itself, so the button still reads as
-      contact information. `aria-label` gives it a verb, since the visible
-      text alone does not say what the click does; the cursor's "Copy" is
-      aria-hidden and cannot carry that for a screen reader.
-    */}
-    <div class="flex justify-end">
+    {/* Click copies the address. `aria-label` says so for screen readers. */}
+    {/* items-start: a stretched <button> centres its text vertically. */}
+    <div class="flex items-start justify-end">
       <button
         type="button"
         class="pointer-events-auto block text-sm font-semibold text-ink-50 transition-colors hover:text-ink"
-        data-copy="hosek@weborio.cz"
+        data-copy={CONTACT.email}
         data-cursor="Copy"
         data-cursor-done="Copied"
-        aria-label="Copy email address hosek@weborio.cz"
+        aria-label={`Copy email address ${CONTACT.email}`}
       >
-        <Reveal swap>hosek@weborio.cz</Reveal>
+        <Reveal swap>{CONTACT.email}</Reveal>
       </button>
     </div>
   </header>
 
   <footer class="fixed inset-x-0 bottom-0 z-50 grid grid-cols-2 items-end gap-6 px-4 py-4 md:grid-cols-3 md:gap-10 md:px-6">
-    {/* Points at the homepage, so it carries the same label the nav's own
-        "Index" link does — the destination, not the wording of the link. */}
     <a class="pointer-events-auto hidden text-sm font-semibold md:block w-fit" href="/" data-cursor="Index"><Reveal swap>Nikolas Hošek</Reveal></a>
 
-    {/* The middle slot the grid frees up — the most commercially important line
-        on the site, kept out of the About page's body copy. */}
     <p class="flex items-center gap-2 text-sm font-semibold">
-      {/* The pulse is the resting state; `frame__dot` adds the entry, which
-          scales it up from nothing as the line beside it arrives. A point has
-          no direction to slide from, so it grows instead. */}
+      {/* The dot pulses, and grows in on load. */}
       <span class="frame__dot inline-block size-1.5 shrink-0 rounded-full bg-signal animate-pulse"></span>
       <Reveal>Available <span class="hidden sm:inline">for work</span></Reveal>
     </p>
@@ -117,14 +84,7 @@ const NAV = [
     </div>
   </footer>
 
-  {/*
-    The mobile menu. Below the grain overlay (z-100) and above everything
-    else, so the paper texture still reads across it.
-
-    `inert` rather than `hidden`: the panel stays in the layout and animates,
-    but is removed from the tab order and the accessibility tree while closed,
-    so its links are never focusable behind the button. The script toggles it.
-  */}
+  {/* Mobile menu. `inert` keeps its links unreachable while it's closed. */}
   <div
     id="menu"
     class="menu pointer-events-none fixed inset-0 z-40 flex flex-col justify-center bg-paper px-4 md:hidden"
@@ -148,34 +108,21 @@ const NAV = [
     </ul>
 
     <div class="menu__item mt-10 flex flex-col gap-1" style={`--menu-i:${NAV.length}`}>
-      <a class="text-sm font-semibold text-ink-50 transition-colors hover:text-ink" href="mailto:hosek@weborio.cz">hosek@weborio.cz</a>
+      <a class="text-sm font-semibold text-ink-50 transition-colors hover:text-ink" href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
       <span class="text-sm font-semibold text-ink-50">Based in Czechia</span>
     </div>
   </div>
 </div>
 
 <style>
-  /*
-    Entry for the status dot.
-
-    TRANSFORM ONLY. `animate-pulse` is a keyframe animation on `opacity`, and
-    a keyframe animation beats a transition on the same property — fading the
-    dot in would be silently overridden the moment the pulse ran, and the dot
-    would simply appear. Scaling leaves opacity entirely to the pulse, so the
-    two compose instead of competing.
-
-    `html.js` is set in BaseLayout before first paint, so the held state is
-    never visible as a flash at full size — and a page whose scripts fail
-    shows the dot normally.
-  */
+  /* Status dot entry. Scale only — the pulse already animates opacity. */
   :global(html.js) .frame__dot {
     transform: scale(0);
   }
 
   :global(html.js.is-frame-in) .frame__dot {
     transform: scale(1);
-    /* Overshoots and settles, the same swing the frame's own lines land with.
-       The delay puts it with "Available for work" rather than ahead of it. */
+    /* Lands with the "Available" text. */
     transition: transform 620ms cubic-bezier(0.16, 1.4, 0.3, 1) 520ms;
   }
 
@@ -188,12 +135,7 @@ const NAV = [
 
   /* ------------------------------------------------------------- menu */
 
-  /*
-    The toggle's label swaps Menu -> Close on the same two-face stack <Reveal>
-    uses, so the button never changes width and nothing reflows mid-open.
-    Written here rather than with <Reveal swap> because the trigger is the
-    panel's open state, not hover.
-  */
+  /* Menu/Close label roll. */
   .menu-toggle__faces {
     display: block;
     height: 1lh;
@@ -210,13 +152,7 @@ const NAV = [
     transform: translateY(-100%);
   }
 
-
-  /*
-    The panel wipes down from the top edge, the same clip-path vocabulary the
-    project covers use — just on the other axis. `visibility` rides along so a
-    closed panel is not a click target even while its opacity is still
-    settling.
-  */
+  /* The panel wipes down from the top. */
   .menu {
     clip-path: inset(0 0 100% 0);
     visibility: hidden;
@@ -234,7 +170,7 @@ const NAV = [
       visibility 0s;
   }
 
-  /* Items rise in behind the wipe, staggered by their index. */
+  /* Items rise in one after another. */
   .menu__item {
     opacity: 0;
     transform: translateY(1rem);
@@ -258,15 +194,11 @@ const NAV = [
   }
 </style>
 
-{/* Smooth scrolling, site-wide. WorkRail drives its programmatic moves
-    through `window.lenisInstance` so the rail and the user's own wheel never fight
-    over the same scroll position. */}
 <script>
   import Lenis from 'lenis';
 
-  // Czech local time, so the footer reads as live rather than frozen. Hours and
-  // seconds are separate elements because narrow screens hide the seconds via
-  // CSS — writing one string here would put them back.
+  // Live Czech time in the footer. Seconds are a separate element because
+  // small screens hide them.
   {
     const el = document.querySelector<HTMLElement>("[data-clock]");
     const hm = el?.querySelector<HTMLElement>("[data-clock-hm]");
@@ -291,14 +223,7 @@ const NAV = [
     }
   }
 
-  /*
-    Mobile menu.
-
-    Scroll is locked through Lenis rather than `overflow: hidden` on <body>:
-    Lenis owns the scroll position site-wide, and stopping it leaves that
-    position untouched — where an overflow lock would let the page jump to the
-    top on some browsers and undo the rail's own offset.
-  */
+  /* Mobile menu. Scrolling is paused through Lenis so the page doesn't jump. */
   {
     const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
     const panel = document.querySelector<HTMLElement>('[data-menu]');
@@ -311,13 +236,10 @@ const NAV = [
           panel.setAttribute('data-open', '');
           panel.removeAttribute('inert');
           window.lenisInstance?.stop();
-          // Lenis is never created under reduced motion, so the page would
-          // still scroll behind the panel without this.
+          // No Lenis under reduced motion, so lock the page directly too.
           document.documentElement.style.overflow = 'hidden';
         } else {
           panel.removeAttribute('data-open');
-          // `inert` also drops the panel out of the accessibility tree, so the
-          // links behind the button are never reachable while it is closed.
           panel.setAttribute('inert', '');
           window.lenisInstance?.start();
           document.documentElement.style.overflow = '';
@@ -331,31 +253,21 @@ const NAV = [
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && isOpen()) {
           setOpen(false);
-          // Focus goes back to what opened it, or it would be left on <body>.
+          // Put focus back on the button.
           toggle.focus();
         }
       });
 
       /*
-        Deliberately NOT closing the panel on a link click.
-
-        Every navigation here is a full page load, so the new document arrives
-        with the panel closed anyway. Running the close animation on the way
-        out only means watching a 620ms wipe play on a page that is already
-        leaving — which reads as a stutter before the new page appears.
-
-        The one case that needs handling is a link to the page you are already
-        on: the browser does not navigate, so without this the panel would sit
-        open over the same page. Closing only in that case keeps the state
-        honest without animating anything during a real navigation.
+        Links don't close the panel — the next page loads with it closed anyway,
+        and animating it closed first looks like a stutter. Only close it for
+        mailto: links and links to the current page, where nothing navigates.
       */
       for (const link of panel.querySelectorAll('a')) {
         link.addEventListener('click', () => {
           const href = link.getAttribute('href') ?? '';
           const target = new URL(href, location.href);
 
-          // `mailto:` hands off to a mail client and leaves the page where it
-          // is, so the panel would otherwise stay open behind it.
           const leaves =
             target.protocol === 'http:' || target.protocol === 'https:';
           const samePage =
@@ -366,9 +278,7 @@ const NAV = [
         });
       }
 
-      // Crossing to the desktop breakpoint hides the panel via CSS, which
-      // would otherwise leave the toggle reporting `expanded` and scroll
-      // locked with no visible way to undo either.
+      // Close it if the window grows to desktop size.
       const desktop = window.matchMedia('(min-width: 768px)');
       desktop.addEventListener('change', (event) => {
         if (event.matches && isOpen()) setOpen(false);
@@ -377,132 +287,42 @@ const NAV = [
   }
 
   /*
-    Copy-to-clipboard, on anything carrying `data-copy`.
-
-    Two kinds of element can use this, and the difference matters on failure:
-
-      <button data-copy>  copying IS the action. There is nothing to fall back
-                          to, so a failure has to be handled here — see the
-                          execCommand path below.
-      <a href data-copy>  copying is an ENHANCEMENT over a link that already
-                          works. A failure simply lets the click through, and
-                          the mail client or dialler opens as the href says.
-
-    `el.matches('a[href]')` is what separates them, so the same attribute can
-    mean both without the markup having to declare which.
-
-    Every current caller is a <button>: the address and the phone number both
-    copy rather than handing off. The link branch is kept because it is what
-    makes `data-copy` safe to put on an <a> — without it, a `tel:` link on a
-    phone would copy instead of dialling.
-
-    The element reports its own state through `data-cursor-state`; the cursor
-    watches that attribute and swaps to `data-cursor-done`. Nothing here knows
-    the cursor exists.
+    Copy to clipboard on any <button data-copy>. The button shows "Copied"
+    through the cursor. Needs https (fails on plain http:// previews).
   */
-  {
-    /*
-      The pre-Clipboard-API copy, kept only for the <button> case where there
-      is no href to fall through to: an insecure origin (a LAN IP, a plain
-      http:// preview) has no `navigator.clipboard` at all, and without this
-      the button would be inert there.
+  for (const el of document.querySelectorAll<HTMLElement>('[data-copy]')) {
+    let timer = 0;
 
-      The textarea is off-screen rather than `display: none` — a hidden
-      element cannot be selected, so the copy would silently do nothing.
-    */
-    const legacyCopy = (value: string) => {
-      const field = document.createElement('textarea');
-      field.value = value;
-      field.setAttribute('readonly', '');
-      field.style.position = 'fixed';
-      field.style.top = '-9999px';
-      document.body.appendChild(field);
-      field.select();
+    el.addEventListener('click', async () => {
+      const value = el.getAttribute('data-copy');
+      if (!value) return;
 
       let ok = false;
       try {
-        ok = document.execCommand('copy');
-      } catch {
-        ok = false;
-      }
+        await navigator.clipboard.writeText(value);
+        ok = true;
+      } catch {}
 
-      field.remove();
-      return ok;
-    };
+      el.setAttribute('data-cursor-state', ok ? 'done' : 'failed');
+      clearTimeout(timer);
+      timer = window.setTimeout(() => el.removeAttribute('data-cursor-state'), 1600);
+    });
 
-    for (const el of document.querySelectorAll<HTMLElement>('[data-copy]')) {
-      // Per element, so two copy targets never share one timer and cancel
-      // each other's confirmation.
-      let timer = 0;
-
-      // A link can fall through to its href; a button has nowhere to go.
-      const hasFallback = el.matches('a[href]');
-
-      el.addEventListener('click', async (event) => {
-        // A modified click is the user asking for the browser's own behaviour
-        // — a new tab, a download, the context menu. Never intercept it.
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-
-        /*
-          On a touch device a `tel:` or `mailto:` link should do the thing it
-          says: dial, or open the mail app. Copying is the better action only
-          where there is a pointer and no dialler — so the enhancement is
-          limited to fine pointers, and only for elements that HAVE a
-          fallback.
-
-          A <button data-copy> has no href, so it copies everywhere; that is
-          its whole purpose and there is nothing else for a tap to do.
-
-          Read per click rather than cached: a hybrid laptop can gain and lose
-          a mouse mid-session.
-        */
-        if (hasFallback && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-          return;
-        }
-
-        const value = el.getAttribute('data-copy');
-        if (!value) return;
-
-        let ok = false;
-
-        if (navigator.clipboard) {
-          try {
-            await navigator.clipboard.writeText(value);
-            ok = true;
-          } catch {
-            ok = false;
-          }
-        }
-
-        // Only worth attempting where there is no href to fall back on.
-        if (!ok && !hasFallback) ok = legacyCopy(value);
-
-        // A link whose copy failed is left alone, so the browser follows the
-        // href — the behaviour the markup promised in the first place.
-        if (!ok && hasFallback) return;
-
-        event.preventDefault();
-
-        // `ok` can still be false here for a button with no working copy path
-        // at all. Say so rather than claiming success.
-        el.setAttribute('data-cursor-state', ok ? 'done' : 'failed');
-        clearTimeout(timer);
-        timer = window.setTimeout(() => el.removeAttribute('data-cursor-state'), 1600);
-      });
-
-      // Leaving and coming back should offer the action again rather than
-      // still showing the last confirmation.
-      el.addEventListener('pointerleave', () => {
-        clearTimeout(timer);
-        el.removeAttribute('data-cursor-state');
-      });
-    }
+    // Reset when the pointer leaves.
+    el.addEventListener('pointerleave', () => {
+      clearTimeout(timer);
+      el.removeAttribute('data-cursor-state');
+    });
   }
 
+  /*
+    Smooth scrolling (Lenis). Reduced motion turns it off everywhere except
+    the homepage rail, which is built around it.
+  */
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const isRail = document.documentElement.classList.contains('rail-host');
 
-  if (!reduced.matches) {
-    const lenis = new Lenis({ autoRaf: true });
-    window.lenisInstance = lenis;
+  if (!reduced.matches || isRail) {
+    window.lenisInstance = new Lenis({ autoRaf: true, respectReducedMotion: false });
   }
 </script>

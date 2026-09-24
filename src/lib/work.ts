@@ -2,7 +2,7 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 
 export type Project = CollectionEntry<'work'>;
 
-/** Drafts never ship; `order` then title decides the rail's sequence. */
+// Sorted by `order`, then title.
 const byOrder = (a: Project, b: Project) =>
   a.data.order - b.data.order || a.data.title.localeCompare(b.data.title);
 
@@ -15,11 +15,8 @@ export async function getFeaturedProjects(): Promise<Project[]> {
   return (await getProjects()).filter(({ data }) => data.featured);
 }
 
-/**
- * A project's gallery frames: every image or video in
- * src/assets/work/<project id>/ except the mockup, in filename order — so
- * 01, 02, 03… is the sequence, and adding a frame is dropping in a file.
- */
+// Gallery frames: every image/video in src/assets/work/<id>/ except the
+// mockup, in filename order (01, 02, 03…).
 export type Frame =
   | { kind: 'image'; src: ImageMetadata }
   | { kind: 'video'; src: string };

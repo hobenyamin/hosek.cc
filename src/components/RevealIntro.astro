@@ -1,32 +1,19 @@
 ---
 /**
- * Entry animation: every <Reveal> line slides in from the left, in the order
- * they sit across the page, with a slight overshoot as it lands.
- *
- * The cascade is keyed off each line's SCREEN POSITION, not its position in
- * the DOM — a fixed header, a footer and the page body are three separate
- * subtrees, so document order would fire them in a sequence that has nothing
- * to do with what the eye sees. Sorting by x (then y) makes the sweep read as
- * one movement travelling across the page.
+ * Page-load animation: every <Reveal> line slides in from the left, with a
+ * small overshoot. Lines go in order of where they sit on screen (left to
+ * right, then top to bottom), not DOM order, so it reads as one sweep.
  */
 ---
 
 <script>
-  import { animate, stagger } from 'motion';
-  import type { AnimationOptions } from 'motion';
-
-  // Anything inside a block that runs its own entry is excluded: /work's
-  // projects reveal as they scroll into view and /about's sections rise on
-  // load, so sweeping their lines here too would animate the same text twice,
-  // from two different scripts. Those lines still carry <Reveal swap> for its
-  // hover behaviour, which needs no JS and is unaffected.
+  // /work projects and /about sections animate themselves, so skip them here.
   const lines = Array.from(
     document.querySelectorAll<HTMLElement>('[data-reveal]'),
   ).filter((line) => !line.closest('[data-project], [data-about]'));
 
-  // Unconditional, and BEFORE the early returns inside run(): the frame's
-  // non-text entries (the status dot) hold themselves at scale(0) in CSS, so
-  // a path that never sets this would leave them invisible for good.
+  // Always set, even when nothing animates — the footer's status dot waits
+  // for it and would stay hidden otherwise.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       document.documentElement.classList.add('is-frame-in');
@@ -48,8 +35,7 @@
       .filter((entry): entry is { el: HTMLElement; box: DOMRect; order: number } =>
         entry.el !== null,
       )
-      // An explicit order wins; everything else sweeps left to right, and
-      // lines sharing a column fall top to bottom.
+      // An explicit `order` wins; otherwise left to right, then top to bottom.
       .sort((a, b) => {
         if (!Number.isNaN(a.order) || !Number.isNaN(b.order)) {
           return (Number.isNaN(a.order) ? Infinity : a.order) -
@@ -59,30 +45,28 @@
       })
       .map((entry) => entry.el);
 
-    // The offscreen state is NOT set here — it is held in CSS under `html.js`
-    // (see Reveal.astro), which applies before the first paint. Setting it
-    // from this deferred module meant the browser painted every line in place
-    // first, which showed as a flash of loaded text on a fast refresh.
-
-    // Two frames: one for the browser to paint the offscreen state, one to be
-    // sure it has. Animating from an unpainted state is the usual reason an
-    // entry animation silently does not run.
+    // The lines are already hidden by CSS (see Reveal.astro). Wait two frames
+    // so that hidden state is painted, or the animation may not run.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        animate(
-          inners,
-          { transform: ['translateX(-110%)', 'translateX(0%)'] },
-          {
-            duration: 0.9,
-            delay: stagger(0.055),
-            // Overshoots a little past its resting place and settles back —
-            // the swing. Softer than a spring, and it costs one curve rather
-            // than a physics simulation per element.
-            ease: [0.16, 1.11, 0.3, 1],
-          } satisfies AnimationOptions,
-        ).then(() => {
-          // The promotion hint is only worth paying for while something moves.
-          for (const el of inners) el.style.willChange = '';
+        inners.forEach((el, i) => {
+          // Set the end position inline so it beats the CSS hide once the
+          // animation finishes; `fill: backwards` holds the start until then.
+          el.style.transform = 'translateX(0%)';
+          el.animate(
+            { transform: ['translateX(-110%)', 'translateX(0%)'] },
+            {
+              duration: 900,
+              delay: i * 55,
+              fill: 'backwards',
+              // Slight overshoot, then settles.
+              easing: 'cubic-bezier(0.16, 1.11, 0.3, 1)',
+            },
+          ).finished.then(
+            // Drop the GPU hint once it's done moving.
+            () => { el.style.willChange = 'auto'; },
+            () => {},
+          );
         });
       });
     });
