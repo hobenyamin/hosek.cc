@@ -259,7 +259,7 @@ const NAV = [
 </style>
 
 {/* Smooth scrolling, site-wide. WorkRail drives its programmatic moves
-    through `window.lenis` so the rail and the user's own wheel never fight
+    through `window.lenisInstance` so the rail and the user's own wheel never fight
     over the same scroll position. */}
 <script>
   import Lenis from 'lenis';
@@ -310,7 +310,7 @@ const NAV = [
         if (open) {
           panel.setAttribute('data-open', '');
           panel.removeAttribute('inert');
-          window.lenis?.stop();
+          window.lenisInstance?.stop();
           // Lenis is never created under reduced motion, so the page would
           // still scroll behind the panel without this.
           document.documentElement.style.overflow = 'hidden';
@@ -319,7 +319,7 @@ const NAV = [
           // `inert` also drops the panel out of the accessibility tree, so the
           // links behind the button are never reachable while it is closed.
           panel.setAttribute('inert', '');
-          window.lenis?.start();
+          window.lenisInstance?.start();
           document.documentElement.style.overflow = '';
         }
       };
@@ -503,6 +503,6 @@ const NAV = [
 
   if (!reduced.matches) {
     const lenis = new Lenis({ autoRaf: true });
-    window.lenis = lenis;
+    window.lenisInstance = lenis;
   }
 </script>

@@ -721,13 +721,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
     /** Puts the page at `top` with no animation, keeping Lenis in sync. */
     function jump(top: number) {
-      window.lenis?.scrollTo(top, { immediate: true, force: true });
+      window.lenisInstance?.scrollTo(top, { immediate: true, force: true });
     }
 
     /** Moves the page to `top` over `ms`, through Lenis. */
     function glide(top: number, ms: number) {
       if (ms <= 0) jump(top);
-      else window.lenis?.scrollTo(top, { duration: ms / 1000, easing: ease });
+      else window.lenisInstance?.scrollTo(top, { duration: ms / 1000, easing: ease });
 
       wake();
     }
