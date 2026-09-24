@@ -6,7 +6,7 @@ import AboutIntro from '../components/AboutIntro.astro';
 import { ArrowDownRight, X } from '@lucide/astro';
 import { Image } from 'astro:assets';
 import pfp from '../assets/pfp.jpg';
-import { CONTACT } from '../consts';
+import { CONTACT, SOCIALS } from '../consts';
 ---
 
 <BaseLayout title="About" description="About Nikolas Hošek, a designer and frontend developer in Olomouc, Czechia — background, approach and contact.">
@@ -128,8 +128,8 @@ import { CONTACT } from '../consts';
                         </div>
                         <div class="flex flex-col">
                             {/* Open in a new tab. */}
-                            <a href="https://instagram.com/" target="_blank" rel="noreferrer" data-cursor="Visit" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>INSTAGRAM</Reveal> <span class="text-ink">]</span></a>
-                            <a href="https://github.com/" target="_blank" rel="noreferrer" data-cursor="Visit" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>GITHUB</Reveal> <span class="text-ink">]</span></a>
+                            <a href={SOCIALS.instagram} target="_blank" rel="noreferrer" data-cursor="Visit" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>INSTAGRAM</Reveal> <span class="text-ink">]</span></a>
+                            <a href={SOCIALS.github} target="_blank" rel="noreferrer" data-cursor="Visit" class="w-fit text-ink-50 text-xs font-semibold uppercase font-mono tracking-widest hover:text-ink transition-all"><span class="text-ink">[</span> <Reveal swap>GITHUB</Reveal> <span class="text-ink">]</span></a>
                         </div>
                     </div>
 

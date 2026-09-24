@@ -23,6 +23,11 @@ export const CONTACT = {
   country: 'CZ',
 };
 
+export const SOCIALS = {
+  instagram: 'https://www.instagram.com/hobenyamin/',
+  github: 'https://github.com/hobenyamin',
+};
+
 export const NAV: { label: string; href: string }[] = [
   { label: 'Index', href: '/' },
   { label: 'Work', href: '/work' },

@@ -1,5 +1,5 @@
 ---
-import { CONTACT, SITE } from '../consts';
+import { CONTACT, SITE, SOCIALS } from '../consts';
 import { publicPath } from '../lib/path';
 import '../styles/global.css';
 
@@ -32,6 +32,7 @@ const jsonLd = {
       jobTitle: SITE.jobTitle,
       url: SITE.url,
       email: `mailto:${CONTACT.email}`,
+      sameAs: Object.values(SOCIALS),
       address: {
         '@type': 'PostalAddress',
         addressLocality: CONTACT.city,
@@ -61,7 +62,9 @@ const jsonLd = {
 {/* Tints the mobile browser bar to match the page. */}
 <meta name="theme-color" content="#f4f2ec" />
 
+<link rel="icon" href="/favicon.ico" sizes="32x32" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="sitemap" href="/sitemap-index.xml" />
 
 <meta property="og:type" content={type} />
