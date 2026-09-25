@@ -105,8 +105,6 @@ const pad = (n: number) => String(n).padStart(2, '0');
       </p>
     </div>
   </div>
-
-  <div class="rail__runway hidden" data-rail-runway></div>
 </section>
 
 {/* Runs right away so the plain list never flashes. */}
@@ -139,19 +137,22 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
   /* ------------------------------------------------------------------ live */
 
-  .rail--live .rail__bg,
-  .rail--live .rail__runway {
+  .rail--live .rail__bg {
     display: block;
   }
 
-  /* 100svh, not inset: 0 — a fixed height, so Safari's toolbar growing and
-     shrinking doesn't move the rail's centre. */
+  /*
+    100svh, not inset: 0 — a fixed height, so the rail's centre never moves.
+    `touch-action: none` hands every swipe to the script instead of the
+    browser.
+  */
   .rail--live .rail__list {
     display: block;
     position: fixed;
     inset: 0 0 auto;
     height: 100svh;
     z-index: 1;
+    touch-action: none;
   }
 
   /*
@@ -202,7 +203,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     aspect-ratio: var(--rail-rw) / var(--rail-rh);
     /* The link scales inside the box, so smaller covers are smaller to click. */
     pointer-events: none;
-    will-change: transform, filter, opacity;
+    will-change: transform, opacity;
   }
 
   .rail--live .rail__link {
@@ -286,7 +287,6 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
   function initRail(root: HTMLElement) {
     const list = root.querySelector<HTMLElement>('[data-rail-list]')!;
-    const runway = root.querySelector<HTMLElement>('[data-rail-runway]')!;
 
     const originals = Array.from(list.querySelectorAll<HTMLElement>('[data-rail-item]'));
     const count = originals.length;
@@ -301,13 +301,14 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
     /*
       The loop is endless: each cover's position is its distance from the
-      centre, wrapped around. The page itself is a long but finite scroll area,
-      and the rail quietly moves back to its middle when at rest (see recentre).
+      centre, wrapped around. The page doesn't scroll — `current` is the
+      rail's own scroll position, easing towards `target`, which wheel, touch
+      and keys move.
     */
-    const RUNWAY = 100_000;
+    let current = 0;
+    let target = 0;
 
     let items: HTMLElement[] = [];
-    let anchor = 0;
     let step = 1;
     let loop = 1;
     let activeH = 0;
@@ -318,6 +319,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     let thumbMin = 0.16;
     let fadeStep = 0.12;
     let fadeMin = 0.4;
+    let edgeZone = 1.5;
     let cullAt = 0;
     let halfView = 0;
     let active = -1;
@@ -333,18 +335,19 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
     // The frame loop only runs while something is moving.
     let running = false;
-    let idleFrames = 0;
-    // True during a snap, so landing doesn't trigger another one.
-    let snapping = false;
-    let lastY = NaN;
+    let lastTime = 0;
+    // A finger is on the rail: it follows the finger instead of easing.
+    let dragging = false;
 
-    let glideMs = 700;
-
-    runway.style.height = `${RUNWAY}px`;
-    history.scrollRestoration = 'manual';
+    /*
+      The rail glides on a spring: it speeds up gently, keeps the speed of a
+      flick, and settles without bouncing. `speed` is in px per second;
+      `stiffness` comes from --rail-glide.
+    */
+    let speed = 0;
+    let stiffness = 7;
 
     measure();
-    jump(anchor);
     render();
 
     // Placed — safe to show.
@@ -376,8 +379,9 @@ const pad = (n: number) => String(n).padStart(2, '0');
       thumbMin = num('--rail-thumb-min', 0.16);
       fadeStep = num('--rail-fade', 0.12);
       fadeMin = num('--rail-fade-min', 0.4);
-      // Kept under reduced motion — the rail always uses Lenis (see Frame.astro).
-      glideMs = num('--rail-glide', 700);
+      edgeZone = Math.max(0.1, num('--rail-edge', 1.5));
+      // Roughly the seconds a one-project glide takes to settle.
+      stiffness = 6.5 / Math.max(0.1, num('--rail-glide', 0.9));
 
       activeH = originals[0].offsetHeight;
       gapPx = activeH * num('--rail-gap', 0.03);
@@ -395,13 +399,9 @@ const pad = (n: number) => String(n).padStart(2, '0');
       if (items.length !== count * copies) clone(copies);
 
       loop = items.length * step;
-      anchor = Math.round(RUNWAY / 2 / loop) * loop;
     }
 
-    /**
-     * Screen height that ignores Safari's toolbar: the small viewport on iOS,
-     * the normal height everywhere else. Matches the layers' 100svh.
-     */
+    /** Screen height. The page is locked to 100svh, so this matches the layers. */
     function viewH() {
       return document.documentElement.clientHeight;
     }
@@ -430,7 +430,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     }
 
     function render() {
-      const offset = window.scrollY - anchor;
+      const offset = current;
 
       for (let i = 0; i < items.length; i++) {
         const el = items[i];
@@ -453,14 +453,25 @@ const pad = (n: number) => String(n).padStart(2, '0');
           link.toggleAttribute('data-cursor-mute', !centred);
         }
 
-        // Skip covers that are off screen.
-        if (Math.abs(y) - h / 2 > halfView) {
+        /*
+          Skip covers that are off screen. They're shown one cover early (fully
+          faded) so the browser has drawn them before they reach the edge.
+          Otherwise they can pop in a frame late on phones.
+        */
+        if (Math.abs(y) - h / 2 > halfView + h) {
           if (el.style.visibility !== 'hidden') el.style.visibility = 'hidden';
           continue;
         }
         if (el.style.visibility) el.style.visibility = '';
 
-        const opacity = Math.max(fadeMin, 1 - away * fadeStep);
+        /*
+          Covers fade in as they come in over the top or bottom edge instead of
+          being cut off by it: 0 while outside, full once `edgeZone` covers in.
+        */
+        const inside = (halfView + h / 2 - Math.abs(y)) / (h * edgeZone);
+        const edge = smooth(Math.min(1, Math.max(0, inside)));
+
+        const opacity = Math.max(fadeMin, 1 - away * fadeStep) * edge;
 
         el.style.transform = `translate(-50%, -50%) translate3d(0, ${y.toFixed(2)}px, 0)`;
         el.style.opacity = opacity.toFixed(3);
@@ -501,13 +512,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
     /** Eases the caption gap in as a cover reaches the centre. */
     function shove(away: number) {
-      const x = Math.min(1, away);
-      return x * x * (3 - 2 * x);
+      return smooth(Math.min(1, away));
     }
 
-    /** Ease-out, so a click mid-scroll doesn't brake and restart. */
-    function ease(t: number) {
-      return 1 - Math.pow(1 - t, 3);
+    /** Smoothstep: 0 → 1 with soft ends. */
+    function smooth(x: number) {
+      return x * x * (3 - 2 * x);
     }
 
     function setMeta(source: HTMLElement) {
@@ -523,54 +533,52 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
     // ------------------------------------------------------------- motion
 
-    // All scrolling goes through Lenis (set up in Frame.astro).
-
-    /** Jump to `top` instantly. */
-    function jump(top: number) {
-      window.lenisInstance?.scrollTo(top, { immediate: true, force: true });
+    /** Index of the project `offset` is closest to (unwrapped). */
+    function slot(offset: number) {
+      return Math.round(offset / step);
     }
 
-    /** Glide to `top` over `ms`. */
-    function glide(top: number, ms: number) {
-      if (ms <= 0) jump(top);
-      else window.lenisInstance?.scrollTo(top, { duration: ms / 1000, easing: ease });
-
+    /** Aim at project slot `n` and ease there. */
+    function goTo(n: number) {
+      target = n * step;
       wake();
-    }
-
-    /**
-     * At rest, jump back towards the middle of the scroll area. It moves by
-     * whole loops, so nothing visibly changes.
-     */
-    function recentre() {
-      const drift = window.scrollY - anchor;
-      if (Math.abs(drift) < loop * 8) return;
-      jump(window.scrollY - Math.trunc(drift / loop) * loop);
     }
 
     function wake() {
       if (running) return;
       running = true;
-      idleFrames = 0;
+      lastTime = performance.now();
       requestAnimationFrame(frame);
     }
 
-    function frame() {
+    function frame(now: number) {
+      // In seconds, capped so a dropped frame doesn't fling the rail.
+      const dt = Math.min(0.064, (now - lastTime) / 1000);
+      lastTime = now;
+
+      if (!dragging) {
+        /*
+          Critically damped spring, in small fixed steps so it feels the same
+          at 60Hz and 120Hz.
+        */
+        const steps = Math.max(1, Math.ceil(dt * 240));
+        const h = dt / steps;
+        for (let n = 0; n < steps; n++) {
+          const pull = stiffness * stiffness * (target - current) - 2 * stiffness * speed;
+          speed += pull * h;
+          current += speed * h;
+        }
+
+        if (Math.abs(target - current) < 0.1 && Math.abs(speed) < 5) {
+          current = target;
+          speed = 0;
+        }
+      }
+
       render();
 
-      const y = window.scrollY;
-      idleFrames = y === lastY ? idleFrames + 1 : 0;
-      lastY = y;
-
-      // 12 still frames = scrolling has stopped.
-      if (idleFrames > 12) {
+      if (!dragging && current === target) {
         running = false;
-
-        // Snap to the nearest project. `snapping` stops the snap from triggering
-        // another snap when it lands.
-        if (!snapping && snap()) return;
-
-        snapping = false;
         recentre();
         return;
       }
@@ -578,42 +586,168 @@ const pad = (n: number) => String(n).padStart(2, '0');
       requestAnimationFrame(frame);
     }
 
-    /** Glide to the nearest project. Returns true if it moved. */
-    function snap() {
-      const offset = window.scrollY - anchor;
-      const nearest = Math.round(offset / step);
-      const drift = nearest * step - offset;
-
-      if (Math.abs(drift) < 1) return false;
-
-      snapping = true;
-      // Short hop, so a quick glide.
-      glide(window.scrollY + drift, glideMs === 0 ? 0 : Math.min(glideMs, 420));
-      return true;
+    /**
+     * At rest, pull the position back near zero by whole loops, so nothing
+     * visibly changes and the numbers never grow huge.
+     */
+    function recentre() {
+      if (Math.abs(current) < loop * 8) return;
+      const shift = Math.trunc(current / loop) * loop;
+      current -= shift;
+      target -= shift;
     }
 
     /** Scroll the shortest way to bring cover `i` to the centre (click or tab). */
     function centre(i: number) {
-      const drift = distance(i, window.scrollY - anchor);
-      if (drift === 0) return;
-
-      // Longer trips take a bit longer, but not proportionally.
-      const slots = Math.abs(drift) / step;
-      glide(window.scrollY + drift, glideMs * Math.min(2, 0.7 + Math.sqrt(slots) * 0.5));
+      target += distance(i, target);
+      wake();
     }
 
     // ------------------------------------------------------------- events
 
-    window.addEventListener('scroll', wake, { passive: true });
+    const menuOpen = () => document.querySelector('[data-menu][data-open]') !== null;
 
-    // Any new scroll cancels a snap in progress.
-    for (const type of ['wheel', 'touchstart', 'keydown'] as const) {
-      window.addEventListener(type, () => { snapping = false; }, { passive: true });
-    }
+    // Most projects one swipe or wheel spin can move.
+    const MAX_FLING = 5;
 
-    // Only re-measure on a real resize (width, or the stable height). iOS
-    // Safari fires resize every time its toolbar grows or shrinks while
-    // scrolling; re-measuring then made the rail jump mid-swipe.
+    /*
+      Wheel and trackpad move a whole project at a time: the first bit of a
+      spin already heads for the next project, so one notch is enough. Keep
+      spinning and every further screen-third adds another. A spin ends after
+      a short pause (trackpad momentum counts as the same spin).
+      Not passive — nothing else may scroll.
+    */
+    const WHEEL_START = 8;
+    const WHEEL_PAUSE = 200;
+
+    let wheelSum = 0;
+    let wheelFrom = 0;
+    let wheelLast = -Infinity;
+
+    window.addEventListener(
+      'wheel',
+      (event) => {
+        if (menuOpen()) return;
+        event.preventDefault();
+
+        // Lines and pages to px.
+        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewH() : 1;
+        // Trackpads scroll sideways too; follow whichever axis moved more.
+        const delta =
+          Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+
+        // A new spin starts from wherever the rail is heading.
+        if (event.timeStamp - wheelLast > WHEEL_PAUSE) {
+          wheelSum = 0;
+          wheelFrom = slot(target);
+        }
+        wheelLast = event.timeStamp;
+        wheelSum += delta * unit;
+
+        const size = Math.abs(wheelSum);
+        const by =
+          size < WHEEL_START ? 0 : Math.min(MAX_FLING, 1 + Math.floor(size / step));
+
+        goTo(wheelFrom + Math.sign(wheelSum) * by);
+      },
+      { passive: false },
+    );
+
+    /*
+      Touch: the rail follows the finger 1:1, then on release glides on to the
+      project the flick was heading for, keeping the flick's speed. Any real
+      swipe moves at least one.
+    */
+    const SWIPE = 30;
+    const FLING_MS = 220;
+
+    let dragged = false;
+    let startY = 0;
+    let startOffset = 0;
+    let lastTouchY = 0;
+    let lastTouchT = 0;
+    // Finger speed in px per ms.
+    let velocity = 0;
+
+    list.addEventListener(
+      'touchstart',
+      (event) => {
+        if (event.touches.length !== 1) return;
+        // A touch ends any wheel spin.
+        wheelLast = -Infinity;
+
+        const y = event.touches[0].clientY;
+        dragging = true;
+        dragged = false;
+        startY = lastTouchY = y;
+        lastTouchT = event.timeStamp;
+        // Catch the rail where it is, even mid-glide.
+        startOffset = target = current;
+        velocity = 0;
+        speed = 0;
+        wake();
+      },
+      { passive: true },
+    );
+
+    list.addEventListener(
+      'touchmove',
+      (event) => {
+        if (!dragging) return;
+        event.preventDefault();
+
+        const y = event.touches[0].clientY;
+        if (Math.abs(y - startY) > 6) dragged = true;
+
+        current = target = startOffset + (startY - y);
+
+        // px per ms, smoothed so one jittery sample doesn't decide the flick.
+        const dt = event.timeStamp - lastTouchT;
+        if (dt > 0) velocity = velocity * 0.2 + ((lastTouchY - y) / dt) * 0.8;
+        lastTouchY = y;
+        lastTouchT = event.timeStamp;
+      },
+      { passive: false },
+    );
+
+    const release = (event: TouchEvent) => {
+      if (!dragging) return;
+      dragging = false;
+
+      // Finger held still before letting go: no flick.
+      if (event.timeStamp - lastTouchT > 80) velocity = 0;
+
+      const from = slot(startOffset);
+      let to = slot(current + velocity * FLING_MS);
+
+      const moved = current - startOffset;
+      if (to === from && Math.abs(moved) > SWIPE) to += Math.sign(moved);
+      to = Math.max(from - MAX_FLING, Math.min(from + MAX_FLING, to));
+
+      // Carry the finger's speed into the glide, so there's no stop on release.
+      speed = velocity * 1000;
+      goTo(to);
+    };
+
+    list.addEventListener('touchend', release);
+    list.addEventListener('touchcancel', release);
+
+    // Keys the page would normally scroll with.
+    window.addEventListener('keydown', (event) => {
+      if (menuOpen() || event.altKey || event.ctrlKey || event.metaKey) return;
+
+      let by = 0;
+      if (event.key === 'ArrowDown' || event.key === 'PageDown') by = 1;
+      else if (event.key === 'ArrowUp' || event.key === 'PageUp') by = -1;
+      else if (event.key === ' ' && !(event.target as HTMLElement).closest('a, button'))
+        by = event.shiftKey ? -1 : 1;
+      if (!by) return;
+
+      event.preventDefault();
+      goTo(slot(target) + by);
+    });
+
+    // Re-measure on a real resize, keeping the same project centred.
     let lastW = window.innerWidth;
     let lastH = viewH();
     window.addEventListener('resize', () => {
@@ -621,22 +755,29 @@ const pad = (n: number) => String(n).padStart(2, '0');
       lastW = window.innerWidth;
       lastH = viewH();
 
-      const centred = Math.round((window.scrollY - anchor) / step);
+      const centred = slot(target);
       measure();
-      jump(anchor + centred * step);
+      current = target = centred * step;
+      speed = 0;
       render();
     });
 
     // Clicking an off-centre cover brings it to the centre; only the centred one
-    // opens.
+    // opens. A swipe that ends on a cover isn't a click.
     list.addEventListener('click', (event) => {
+      if (dragged) {
+        dragged = false;
+        event.preventDefault();
+        return;
+      }
+
       const item = (event.target as HTMLElement).closest<HTMLElement>('[data-rail-item]');
       if (!item) return;
 
       const i = items.indexOf(item);
       if (i === -1) return;
 
-      if (Math.abs(distance(i, window.scrollY - anchor)) < step / 2) return;
+      if (Math.abs(distance(i, current)) < step / 2) return;
 
       event.preventDefault();
       centre(i);
@@ -654,12 +795,17 @@ const pad = (n: number) => String(n).padStart(2, '0');
 </script>
 
 <style is:global>
-  /* Hide the scrollbar on the homepage. */
-  html.rail-host {
-    scrollbar-width: none;
-  }
-
-  html.rail-host::-webkit-scrollbar {
-    display: none;
+  /*
+    The homepage never scrolls: the page is exactly one screen and the rail
+    moves itself. With nothing to scroll, in-app browsers (Instagram) and
+    Safari never shrink their toolbars, so the screen never resizes mid-swipe.
+  */
+  html.rail-host,
+  html.rail-host body {
+    height: 100svh;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
   }
 </style>

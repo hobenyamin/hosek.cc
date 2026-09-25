@@ -76,6 +76,16 @@ const { as: Tag = 'span', order, swap = false, class: className = '' } = Astro.p
     transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  /*
+    Touch screens roll slower, easing in and out, so it reads as a roll and not
+    a glitch. The duration must match ROLL_MS in lib/swap.ts.
+  */
+  @media (hover: none) {
+    .reveal__swap {
+      transition: transform 700ms cubic-bezier(0.65, 0, 0.35, 1);
+    }
+  }
+
   .reveal__face {
     display: block;
     /* One line each, so the -50% move lands exactly. */
@@ -83,9 +93,19 @@ const { as: Tag = 'span', order, swap = false, class: className = '' } = Astro.p
     white-space: nowrap;
   }
 
-  /* Hovering the whole link or button rolls the label up one line. */
-  :global(:is(a, button, [data-swap-host]):hover) .reveal__swap,
-  :global(:is(a, button, [data-swap-host]):focus-visible) .reveal__swap {
+  /*
+    Hovering the whole link or button rolls the label up one line. Mouse only:
+    phones fake a hover on tap and keep it stuck, which flickered the label.
+    Taps roll through `data-swap-on` instead (script below).
+  */
+  @media (hover: hover) and (pointer: fine) {
+    :global(:is(a, button, [data-swap-host]):hover) .reveal__swap {
+      transform: translateY(-50%);
+    }
+  }
+
+  :global(:is(a, button, [data-swap-host]):focus-visible) .reveal__swap,
+  :global([data-swap-on]) .reveal__swap {
     transform: translateY(-50%);
   }
 
@@ -94,4 +114,51 @@ const { as: Tag = 'span', order, swap = false, class: className = '' } = Astro.p
       transition: none;
     }
   }
+
+  /*
+    Status chip a tap can roll to ("Copied", see lib/swap.ts). Same look as the
+    desktop cursor label, stretched across the whole label with its text
+    centred.
+  */
+  :global(.reveal__face[data-swap-chip]) {
+    display: flex;
+    align-items: center;
+    height: 1lh;
+  }
+
+  :global(.swap-chip) {
+    flex: 1;
+    text-align: center;
+    padding: 0.3em 0.6em;
+    border-radius: 2px;
+    background: var(--color-signal);
+    color: var(--color-paper);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  :global(.swap-chip[data-tone='failed']) {
+    background: var(--color-ink-20);
+    color: var(--color-ink);
+  }
 </style>
+
+<script>
+  import { rollSwap } from '../lib/swap';
+
+  // A tap (not a mouse) on a link or button rolls its label.
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (event.pointerType === 'mouse') return;
+
+      const host = (event.target as Element).closest<HTMLElement>('a, button, [data-swap-host]');
+      if (host?.querySelector('.reveal__swap')) rollSwap(host);
+    },
+    { passive: true },
+  );
+</script>

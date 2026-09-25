@@ -196,6 +196,7 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
 
 <script>
   import Lenis from 'lenis';
+  import { rollSwap } from '../lib/swap';
 
   // Live Czech time in the footer. Seconds are a separate element because
   // small screens hide them.
@@ -288,24 +289,45 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
 
   /*
     Copy to clipboard on any <button data-copy>. The button shows "Copied"
-    through the cursor. Needs https (fails on plain http:// previews).
+    through the cursor, or on phones (no cursor) by rolling its label to
+    "Copied".
   */
   for (const el of document.querySelectorAll<HTMLElement>('[data-copy]')) {
     let timer = 0;
 
-    el.addEventListener('click', async () => {
+    /*
+      What pressed it. Read from pointerdown, not the click: iOS Safari reports
+      taps as `pointerType: "mouse"` on the click event.
+    */
+    let pressedBy = '';
+    el.addEventListener('pointerdown', (event) => {
+      pressedBy = event.pointerType;
+    });
+
+    el.addEventListener('click', async (event) => {
       const value = el.getAttribute('data-copy');
       if (!value) return;
 
-      let ok = false;
-      try {
-        await navigator.clipboard.writeText(value);
-        ok = true;
-      } catch {}
+      // `detail` is 0 for keyboard clicks.
+      const byMouse = pressedBy === 'mouse' && event.detail !== 0;
+      pressedBy = '';
+
+      const ok = await copy(value);
 
       el.setAttribute('data-cursor-state', ok ? 'done' : 'failed');
       clearTimeout(timer);
       timer = window.setTimeout(() => el.removeAttribute('data-cursor-state'), 1600);
+
+      // Anything but a mouse (tap, keyboard) has no cursor label to read.
+      if (!byMouse) {
+        rollSwap(
+          el,
+          1600,
+          ok
+            ? { text: el.getAttribute('data-cursor-done') ?? 'Copied', tone: 'done' }
+            : { text: el.getAttribute('data-cursor-failed') ?? "Couldn't copy", tone: 'failed' },
+        );
+      }
     });
 
     // Reset when the pointer leaves.
@@ -316,13 +338,41 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
   }
 
   /*
-    Smooth scrolling (Lenis). Reduced motion turns it off everywhere except
-    the homepage rail, which is built around it.
+    The Clipboard API, falling back to the old select-and-copy trick where it's
+    missing: plain http:// (a phone on the dev server) and some in-app browsers.
+  */
+  async function copy(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {}
+
+    const field = document.createElement('textarea');
+    field.value = value;
+    field.setAttribute('readonly', '');
+    // Off screen; 16px so iOS doesn't zoom in on it.
+    field.style.cssText = 'position:fixed;top:0;left:-9999px;font-size:16px;';
+    document.body.appendChild(field);
+    field.select();
+    field.setSelectionRange(0, value.length);
+
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch {}
+
+    field.remove();
+    return ok;
+  }
+
+  /*
+    Smooth scrolling (Lenis). Off under reduced motion, and on the homepage,
+    where the page doesn't scroll and the rail moves itself.
   */
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const isRail = document.documentElement.classList.contains('rail-host');
 
-  if (!reduced.matches || isRail) {
+  if (!reduced.matches && !isRail) {
     window.lenisInstance = new Lenis({ autoRaf: true, respectReducedMotion: false });
   }
 </script>

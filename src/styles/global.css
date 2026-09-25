@@ -33,6 +33,8 @@
       thumb-min  smallest cover size
       gap        space between covers
       step       scroll distance per project (share of screen height)
+      glide      seconds a glide to the next project takes to settle
+                 (higher = softer and slower)
   */
   --rail-rw: 4;
   --rail-rh: 3;
@@ -45,13 +47,17 @@
   --rail-clear: 0;
 
   --rail-step: 0.34;
-  --rail-glide: 700;
+  --rail-glide: 0.9;
 
   /* Size the rail grows from on load (1 = no grow). */
   --rail-zoom: 0.82;
 
   --rail-fade: 0.12;
   --rail-fade-min: 0.4;
+
+  /* How far a cover travels in from the screen edge while fading in, in
+     cover heights. Higher = softer entry. */
+  --rail-edge: 1.5;
 }
 
 /*
