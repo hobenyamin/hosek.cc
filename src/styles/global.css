@@ -54,6 +54,10 @@
 
   --rail-fade: 0.12;
   --rail-fade-min: 0.4;
+
+  /* How far a cover travels in from the screen edge while fading in, in
+     cover heights. Higher = softer entry. */
+  --rail-edge: 1.5;
 }
 
 /*

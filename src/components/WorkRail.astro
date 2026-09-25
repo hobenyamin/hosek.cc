@@ -319,6 +319,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     let thumbMin = 0.16;
     let fadeStep = 0.12;
     let fadeMin = 0.4;
+    let edgeZone = 1.5;
     let cullAt = 0;
     let halfView = 0;
     let active = -1;
@@ -373,6 +374,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       thumbMin = num('--rail-thumb-min', 0.16);
       fadeStep = num('--rail-fade', 0.12);
       fadeMin = num('--rail-fade-min', 0.4);
+      edgeZone = Math.max(0.1, num('--rail-edge', 1.5));
       lerp = Math.min(1, Math.max(0.01, num('--rail-lerp', 0.1)));
 
       activeH = originals[0].offsetHeight;
@@ -445,14 +447,25 @@ const pad = (n: number) => String(n).padStart(2, '0');
           link.toggleAttribute('data-cursor-mute', !centred);
         }
 
-        // Skip covers that are off screen.
-        if (Math.abs(y) - h / 2 > halfView) {
+        /*
+          Skip covers that are off screen. They're shown one cover early (fully
+          faded) so the browser has drawn them before they reach the edge.
+          Otherwise they can pop in a frame late on phones.
+        */
+        if (Math.abs(y) - h / 2 > halfView + h) {
           if (el.style.visibility !== 'hidden') el.style.visibility = 'hidden';
           continue;
         }
         if (el.style.visibility) el.style.visibility = '';
 
-        const opacity = Math.max(fadeMin, 1 - away * fadeStep);
+        /*
+          Covers fade in as they come in over the top or bottom edge instead of
+          being cut off by it: 0 while outside, full once `edgeZone` covers in.
+        */
+        const inside = (halfView + h / 2 - Math.abs(y)) / (h * edgeZone);
+        const edge = smooth(Math.min(1, Math.max(0, inside)));
+
+        const opacity = Math.max(fadeMin, 1 - away * fadeStep) * edge;
 
         el.style.transform = `translate(-50%, -50%) translate3d(0, ${y.toFixed(2)}px, 0)`;
         el.style.opacity = opacity.toFixed(3);
@@ -493,7 +506,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
     /** Eases the caption gap in as a cover reaches the centre. */
     function shove(away: number) {
-      const x = Math.min(1, away);
+      return smooth(Math.min(1, away));
+    }
+
+    /** Smoothstep: 0 → 1 with soft ends. */
+    function smooth(x: number) {
       return x * x * (3 - 2 * x);
     }
 

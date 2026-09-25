@@ -196,6 +196,7 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
 
 <script>
   import Lenis from 'lenis';
+  import { rollSwap } from '../lib/swap';
 
   // Live Czech time in the footer. Seconds are a separate element because
   // small screens hide them.
@@ -288,12 +289,13 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
 
   /*
     Copy to clipboard on any <button data-copy>. The button shows "Copied"
-    through the cursor. Needs https (fails on plain http:// previews).
+    through the cursor, or on phones (no cursor) by rolling its label to
+    "Copied". Needs https (fails on plain http:// previews).
   */
   for (const el of document.querySelectorAll<HTMLElement>('[data-copy]')) {
     let timer = 0;
 
-    el.addEventListener('click', async () => {
+    el.addEventListener('click', async (event) => {
       const value = el.getAttribute('data-copy');
       if (!value) return;
 
@@ -306,6 +308,14 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
       el.setAttribute('data-cursor-state', ok ? 'done' : 'failed');
       clearTimeout(timer);
       timer = window.setTimeout(() => el.removeAttribute('data-cursor-state'), 1600);
+
+      // Anything but a mouse (tap, keyboard) has no cursor label to read.
+      if ((event as PointerEvent).pointerType !== 'mouse') {
+        const label = ok
+          ? (el.getAttribute('data-cursor-done') ?? 'Copied')
+          : (el.getAttribute('data-cursor-failed') ?? "Couldn't copy");
+        rollSwap(el, 1600, label);
+      }
     });
 
     // Reset when the pointer leaves.
