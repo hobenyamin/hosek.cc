@@ -316,13 +316,13 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
   }
 
   /*
-    Smooth scrolling (Lenis). Reduced motion turns it off everywhere except
-    the homepage rail, which is built around it.
+    Smooth scrolling (Lenis). Off under reduced motion, and on the homepage,
+    where the page doesn't scroll and the rail moves itself.
   */
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const isRail = document.documentElement.classList.contains('rail-host');
 
-  if (!reduced.matches || isRail) {
+  if (!reduced.matches && !isRail) {
     window.lenisInstance = new Lenis({ autoRaf: true, respectReducedMotion: false });
   }
 </script>

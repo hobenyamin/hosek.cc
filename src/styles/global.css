@@ -33,6 +33,8 @@
       thumb-min  smallest cover size
       gap        space between covers
       step       scroll distance per project (share of screen height)
+      lerp       glide smoothness: share of the way covered per frame
+                 (lower = softer and slower, 1 = no glide)
   */
   --rail-rw: 4;
   --rail-rh: 3;
@@ -45,7 +47,7 @@
   --rail-clear: 0;
 
   --rail-step: 0.34;
-  --rail-glide: 700;
+  --rail-lerp: 0.1;
 
   /* Size the rail grows from on load (1 = no grow). */
   --rail-zoom: 0.82;
