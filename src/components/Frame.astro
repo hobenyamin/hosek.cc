@@ -290,27 +290,36 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
   /*
     Copy to clipboard on any <button data-copy>. The button shows "Copied"
     through the cursor, or on phones (no cursor) by rolling its label to
-    "Copied". Needs https (fails on plain http:// previews).
+    "Copied".
   */
   for (const el of document.querySelectorAll<HTMLElement>('[data-copy]')) {
     let timer = 0;
+
+    /*
+      What pressed it. Read from pointerdown, not the click: iOS Safari reports
+      taps as `pointerType: "mouse"` on the click event.
+    */
+    let pressedBy = '';
+    el.addEventListener('pointerdown', (event) => {
+      pressedBy = event.pointerType;
+    });
 
     el.addEventListener('click', async (event) => {
       const value = el.getAttribute('data-copy');
       if (!value) return;
 
-      let ok = false;
-      try {
-        await navigator.clipboard.writeText(value);
-        ok = true;
-      } catch {}
+      // `detail` is 0 for keyboard clicks.
+      const byMouse = pressedBy === 'mouse' && event.detail !== 0;
+      pressedBy = '';
+
+      const ok = await copy(value);
 
       el.setAttribute('data-cursor-state', ok ? 'done' : 'failed');
       clearTimeout(timer);
       timer = window.setTimeout(() => el.removeAttribute('data-cursor-state'), 1600);
 
       // Anything but a mouse (tap, keyboard) has no cursor label to read.
-      if ((event as PointerEvent).pointerType !== 'mouse') {
+      if (!byMouse) {
         const label = ok
           ? (el.getAttribute('data-cursor-done') ?? 'Copied')
           : (el.getAttribute('data-cursor-failed') ?? "Couldn't copy");
@@ -323,6 +332,34 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
       clearTimeout(timer);
       el.removeAttribute('data-cursor-state');
     });
+  }
+
+  /*
+    The Clipboard API, falling back to the old select-and-copy trick where it's
+    missing: plain http:// (a phone on the dev server) and some in-app browsers.
+  */
+  async function copy(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {}
+
+    const field = document.createElement('textarea');
+    field.value = value;
+    field.setAttribute('readonly', '');
+    // Off screen; 16px so iOS doesn't zoom in on it.
+    field.style.cssText = 'position:fixed;top:0;left:-9999px;font-size:16px;';
+    document.body.appendChild(field);
+    field.select();
+    field.setSelectionRange(0, value.length);
+
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch {}
+
+    field.remove();
+    return ok;
   }
 
   /*
