@@ -339,8 +339,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
     // A finger is on the rail: it follows the finger instead of easing.
     let dragging = false;
 
-    // Share of the remaining distance covered per 60fps frame, like Lenis.
-    let lerp = 0.1;
+    /*
+      The rail glides on a spring: it speeds up gently, keeps the speed of a
+      flick, and settles without bouncing. `speed` is in px per second;
+      `stiffness` comes from --rail-glide.
+    */
+    let speed = 0;
+    let stiffness = 7;
 
     measure();
     render();
@@ -375,7 +380,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
       fadeStep = num('--rail-fade', 0.12);
       fadeMin = num('--rail-fade-min', 0.4);
       edgeZone = Math.max(0.1, num('--rail-edge', 1.5));
-      lerp = Math.min(1, Math.max(0.01, num('--rail-lerp', 0.1)));
+      // Roughly the seconds a one-project glide takes to settle.
+      stiffness = 6.5 / Math.max(0.1, num('--rail-glide', 0.9));
 
       activeH = originals[0].offsetHeight;
       gapPx = activeH * num('--rail-gap', 0.03);
@@ -546,14 +552,27 @@ const pad = (n: number) => String(n).padStart(2, '0');
     }
 
     function frame(now: number) {
-      // Frame-rate independent: the same feel at 60Hz and 120Hz.
-      const dt = Math.min(64, now - lastTime);
+      // In seconds, capped so a dropped frame doesn't fling the rail.
+      const dt = Math.min(0.064, (now - lastTime) / 1000);
       lastTime = now;
 
       if (!dragging) {
-        const k = 1 - Math.pow(1 - lerp, dt / (1000 / 60));
-        current += (target - current) * k;
-        if (Math.abs(target - current) < 0.1) current = target;
+        /*
+          Critically damped spring, in small fixed steps so it feels the same
+          at 60Hz and 120Hz.
+        */
+        const steps = Math.max(1, Math.ceil(dt * 240));
+        const h = dt / steps;
+        for (let n = 0; n < steps; n++) {
+          const pull = stiffness * stiffness * (target - current) - 2 * stiffness * speed;
+          speed += pull * h;
+          current += speed * h;
+        }
+
+        if (Math.abs(target - current) < 0.1 && Math.abs(speed) < 5) {
+          current = target;
+          speed = 0;
+        }
       }
 
       render();
@@ -588,11 +607,22 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
     const menuOpen = () => document.querySelector('[data-menu][data-open]') !== null;
 
+    // Most projects one swipe or wheel spin can move.
+    const MAX_FLING = 5;
+
     /*
-      Wheel and trackpad: move the target, then snap to the nearest project
-      once the wheel goes quiet. Not passive — nothing else may scroll.
+      Wheel and trackpad move a whole project at a time: the first bit of a
+      spin already heads for the next project, so one notch is enough. Keep
+      spinning and every further screen-third adds another. A spin ends after
+      a short pause (trackpad momentum counts as the same spin).
+      Not passive — nothing else may scroll.
     */
-    let wheelTimer = 0;
+    const WHEEL_START = 8;
+    const WHEEL_PAUSE = 200;
+
+    let wheelSum = 0;
+    let wheelFrom = 0;
+    let wheelLast = -Infinity;
 
     window.addEventListener(
       'wheel',
@@ -606,35 +636,45 @@ const pad = (n: number) => String(n).padStart(2, '0');
         const delta =
           Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
 
-        target += delta * unit;
-        wake();
+        // A new spin starts from wherever the rail is heading.
+        if (event.timeStamp - wheelLast > WHEEL_PAUSE) {
+          wheelSum = 0;
+          wheelFrom = slot(target);
+        }
+        wheelLast = event.timeStamp;
+        wheelSum += delta * unit;
 
-        clearTimeout(wheelTimer);
-        wheelTimer = window.setTimeout(() => goTo(slot(target)), 140);
+        const size = Math.abs(wheelSum);
+        const by =
+          size < WHEEL_START ? 0 : Math.min(MAX_FLING, 1 + Math.floor(size / step));
+
+        goTo(wheelFrom + Math.sign(wheelSum) * by);
       },
       { passive: false },
     );
 
     /*
-      Touch: the rail follows the finger 1:1, then on release glides to the
-      project the flick was heading for. Any real swipe moves at least one.
+      Touch: the rail follows the finger 1:1, then on release glides on to the
+      project the flick was heading for, keeping the flick's speed. Any real
+      swipe moves at least one.
     */
     const SWIPE = 30;
     const FLING_MS = 220;
-    const MAX_FLING = 5;
 
     let dragged = false;
     let startY = 0;
     let startOffset = 0;
     let lastTouchY = 0;
     let lastTouchT = 0;
+    // Finger speed in px per ms.
     let velocity = 0;
 
     list.addEventListener(
       'touchstart',
       (event) => {
         if (event.touches.length !== 1) return;
-        clearTimeout(wheelTimer);
+        // A touch ends any wheel spin.
+        wheelLast = -Infinity;
 
         const y = event.touches[0].clientY;
         dragging = true;
@@ -644,6 +684,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
         // Catch the rail where it is, even mid-glide.
         startOffset = target = current;
         velocity = 0;
+        speed = 0;
         wake();
       },
       { passive: true },
@@ -683,6 +724,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
       if (to === from && Math.abs(moved) > SWIPE) to += Math.sign(moved);
       to = Math.max(from - MAX_FLING, Math.min(from + MAX_FLING, to));
 
+      // Carry the finger's speed into the glide, so there's no stop on release.
+      speed = velocity * 1000;
       goTo(to);
     };
 
@@ -715,6 +758,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       const centred = slot(target);
       measure();
       current = target = centred * step;
+      speed = 0;
       render();
     });
 

@@ -320,10 +320,13 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
 
       // Anything but a mouse (tap, keyboard) has no cursor label to read.
       if (!byMouse) {
-        const label = ok
-          ? (el.getAttribute('data-cursor-done') ?? 'Copied')
-          : (el.getAttribute('data-cursor-failed') ?? "Couldn't copy");
-        rollSwap(el, 1600, label);
+        rollSwap(
+          el,
+          1600,
+          ok
+            ? { text: el.getAttribute('data-cursor-done') ?? 'Copied', tone: 'done' }
+            : { text: el.getAttribute('data-cursor-failed') ?? "Couldn't copy", tone: 'failed' },
+        );
       }
     });
 

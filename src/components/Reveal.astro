@@ -114,6 +114,37 @@ const { as: Tag = 'span', order, swap = false, class: className = '' } = Astro.p
       transition: none;
     }
   }
+
+  /*
+    Status chip a tap can roll to ("Copied", see lib/swap.ts). Same look as the
+    desktop cursor label, stretched across the whole label with its text
+    centred.
+  */
+  :global(.reveal__face[data-swap-chip]) {
+    display: flex;
+    align-items: center;
+    height: 1lh;
+  }
+
+  :global(.swap-chip) {
+    flex: 1;
+    text-align: center;
+    padding: 0.3em 0.6em;
+    border-radius: 2px;
+    background: var(--color-signal);
+    color: var(--color-paper);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  :global(.swap-chip[data-tone='failed']) {
+    background: var(--color-ink-20);
+    color: var(--color-ink);
+  }
 </style>
 
 <script>

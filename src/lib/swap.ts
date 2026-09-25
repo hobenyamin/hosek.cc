@@ -2,8 +2,9 @@
  * Touch version of the <Reveal swap> hover roll. Phones have no hover, so a
  * tap rolls the label up, holds it, and rolls it back.
  *
- * Pass `label` to roll to different text instead of the copy of the label,
- * e.g. "Copied" after a tap on a copy button.
+ * Pass `chip` to roll to a small status chip instead of the copy of the label,
+ * e.g. "Copied" after a tap on a copy button. It's styled like the desktop
+ * cursor label (see `.swap-chip` in Reveal.astro).
  */
 
 /** Must match the touch roll duration in Reveal.astro. */
@@ -11,16 +12,29 @@ const ROLL_MS = 700;
 
 const timers = new WeakMap<HTMLElement, number>();
 
-export function rollSwap(host: HTMLElement, hold = 900, label?: string) {
+export interface SwapChip {
+  text: string;
+  /** `done` is the accent colour, `failed` is muted — as on the cursor. */
+  tone: 'done' | 'failed';
+}
+
+export function rollSwap(host: HTMLElement, hold = 900, chip?: SwapChip) {
   const faces = Array.from(
     host.querySelectorAll<HTMLElement>('.reveal__swap > .reveal__face:last-child'),
   );
   if (faces.length === 0) return;
 
-  if (label !== undefined) {
+  if (chip) {
     for (const face of faces) {
       face.dataset.swapText ??= face.innerHTML;
-      face.textContent = label;
+
+      const el = document.createElement('span');
+      el.className = 'swap-chip';
+      el.dataset.tone = chip.tone;
+      el.textContent = chip.text;
+
+      face.replaceChildren(el);
+      face.setAttribute('data-swap-chip', '');
     }
   }
 
@@ -40,6 +54,7 @@ export function rollSwap(host: HTMLElement, hold = 900, label?: string) {
             if (face.dataset.swapText === undefined) continue;
             face.innerHTML = face.dataset.swapText;
             delete face.dataset.swapText;
+            face.removeAttribute('data-swap-chip');
           }
         }, ROLL_MS),
       );
